@@ -46,7 +46,6 @@ func (cgr ControllerGenFilter) Filter(input []*yaml.RNode) ([]*yaml.RNode, error
 	// generate CRD definitions
 	desclen := 40
 	crdGen := genall.Generator(crd.Generator{
-		TrivialVersions: true,
 		MaxDescLen:      &desclen,
 	})
 	gens = append(gens, &crdGen)
