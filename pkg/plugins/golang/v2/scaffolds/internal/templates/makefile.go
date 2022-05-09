@@ -58,7 +58,10 @@ const makefileTemplate = `
 # Image URL to use all building/pushing image targets
 IMG ?= {{ .Image }}
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true"
+# Note that v1beta1 was removed from k8s 1.22
+# (Recommended): Upgrade your project to use go/v3 and CRD v1 to build projects which
+# can work on Kubernetes >= 1.22. More info: https://book.kubebuilder.io/migration/v2vsv3.html
+CRD_OPTIONS ?= "crd:crdVersions={v1beta1}"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))

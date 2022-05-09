@@ -33,8 +33,7 @@ func (r *Admiral) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-//+kubebuilder:webhook:path=/mutate-crew-testproject-org-v1-admiral,mutating=true,failurePolicy=fail,groups=crew.testproject.org,resources=admirals,verbs=create;update,versions=v1,name=madmiral.kb.io
-
+//+kubebuilder:webhook:webhookVersions={v1beta1},path=/mutate-crew-testproject-org-v1-admiral,mutating=true,failurePolicy=fail,groups=crew.testproject.org,resources=admirals,verbs=create;update,versions=v1,name=madmiral.kb.io,sideEffects=None,admissionReviewVersions={v1beta1}
 var _ webhook.Defaulter = &Admiral{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
