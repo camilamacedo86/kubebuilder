@@ -92,3 +92,7 @@ type CreateWebhookSubcommand interface {
 type EditSubcommand interface {
 	Subcommand
 }
+
+type CreateSubcommand interface {
+	Subcommand
+}

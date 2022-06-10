@@ -116,6 +116,13 @@ func WithResource(resource *resource.Resource) ScaffoldOption {
 	}
 }
 
+// WithResource provides the resource to the Scaffold
+func WithImage(image string) ScaffoldOption {
+	return func(s *Scaffold) {
+		s.injector.image = image
+	}
+}
+
 // Execute writes to disk the provided files
 func (s *Scaffold) Execute(builders ...Builder) error {
 	// Initialize the files

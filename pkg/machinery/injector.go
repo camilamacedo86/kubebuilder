@@ -31,6 +31,8 @@ type injector struct {
 
 	// resource contains the information of the API that is being scaffolded.
 	resource *resource.Resource
+
+	image string
 }
 
 // injectInto injects fields from the universe into the builder
