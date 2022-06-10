@@ -19,47 +19,32 @@ package v1beta1
 import (
 	"errors"
 	"fmt"
-
+	"github.com/spf13/pflag"
 	"sigs.k8s.io/kubebuilder/v3/pkg/config"
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 	"sigs.k8s.io/kubebuilder/v3/pkg/model/resource"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1beta1/scaffolds"
-	goPluginV2 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v2"
-)
-
-const (
-	// kbDeclarativePattern is the sigs.k8s.io/kubebuilder-declarative-pattern version
-	kbDeclarativePatternForV2 = "v0.0.0-20200522144838-848d48e5b073"
-	kbDeclarativePatternForV3 = "d0f104b6a96e152043e9c2d76229373a981ac96a"
 )
 
 var _ plugin.CreateAPISubcommand = &createAPISubcommand{}
 
 type createAPISubcommand struct {
 	config config.Config
-
 	resource *resource.Resource
+	image string
 }
 
 func (p *createAPISubcommand) UpdateMetadata(cliMeta plugin.CLIMetadata, subcmdMeta *plugin.SubcommandMetadata) {
-	subcmdMeta.Description = `
-Scaffold a Kubernetes API by writing a Resource definition and a Controller.
+	subcmdMeta.Description = `Scaffold the code implementation to deploy and manage your Operand which is represented
+by the API (GVK) informed. Note that you must provide an image.
 
-After the scaffold is written, the dependencies will be updated and
-make generate will be run.
+<TODO: here we will add the help of the plugin>
 `
-	subcmdMeta.Examples = fmt.Sprintf(` 
-  # Create a mongodb API with Group: webdb, Version: v1beta1,  
-  # Kind: Database and Image: mongo
-  %[1]s create api --group webdb --version v1beta1 --kind Database --image mongo --resource --controller
+	subcmdMeta.Examples = fmt.Sprintf(`  # Create a frigates API with Group: ship, Version: v1beta1 and Kind: Frigate
+  %[1]s create api --group ship --version v1beta1 --kind Frigate
 
-  # Edit the API Scheme
-  nano api/v1beta1/frigate_types.go
-
-  # Edit the Controller Test
-  nano controllers/frigate/frigate_controller_test.go
+   <TODO here we will put the valid examples over how to call the plugin and its next steps>
 
   # Generate the manifests
   make manifests
@@ -78,31 +63,34 @@ func (p *createAPISubcommand) InjectConfig(c config.Config) error {
 	return nil
 }
 
+func (p *createAPISubcommand) BindFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&p.image, "image", "", "inform the Operand image. <todo better text here>")
+}
+
 func (p *createAPISubcommand) InjectResource(res *resource.Resource) error {
 	p.resource = res
 
-	if !p.resource.HasAPI() || !p.resource.HasController() {
-		return plugin.ExitError{
-			Plugin: pluginName,
-			Reason: "declarative pattern is only supported when API and controller are scaffolded",
-		}
+	if len(p.image) == 0 {
+		return fmt.Errorf("you must inform the image ")
 	}
+
+	// To scaffold the code implementation is required to have an API and controller
+	//if !p.resource.HasAPI() || !p.resource.HasController() {
+	//	return plugin.ExitError{
+	//		Plugin: pluginName,
+	//		Reason: "deploy-image/v1beta1 is only supported when API and controller are scaffolded",
+	//	}
+	//}
 
 	return nil
 }
 
 func (p *createAPISubcommand) Scaffold(fs machinery.Filesystem) error {
-	fmt.Println("updating scaffold with declarative pattern...")
+	fmt.Println("updating scaffold with deploy-image/v1beta1 plugin...")
 
-	scaffolder := scaffolds.NewAPIScaffolder(p.config, *p.resource)
+	scaffolder := scaffolds.NewAPIScaffolder(p.config, *p.resource, p.image)
 	scaffolder.InjectFS(fs)
 	err := scaffolder.Scaffold()
-	if err != nil {
-		return err
-	}
-
-	// Update Dockerfile
-	err = updateDockerfile()
 	if err != nil {
 		return err
 	}
@@ -123,18 +111,6 @@ func (p *createAPISubcommand) Scaffold(fs machinery.Filesystem) error {
 		}
 	}
 
-	// Ensure that we are pinning sigs.k8s.io/kubebuilder-declarative-pattern version
-	// Just pin an old value for go/v2. It shows fine for now. However, we should improve/change it
-	// if we see that more rules based on the plugins version are required.
-	kbDeclarativePattern := kbDeclarativePatternForV3
-	for _, pluginKey := range p.config.GetPluginChain() {
-		if pluginKey == plugin.KeyFor(goPluginV2.Plugin{}) {
-			kbDeclarativePattern = kbDeclarativePatternForV2
-			break
-		}
-	}
-	err = util.RunCmd("Get declarative pattern", "go", "get",
-		"sigs.k8s.io/kubebuilder-declarative-pattern@"+kbDeclarativePattern)
 	if err != nil {
 		return err
 	}

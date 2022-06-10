@@ -25,11 +25,7 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 	"sigs.k8s.io/kubebuilder/v3/pkg/model/resource"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1beta1/scaffolds/internal/templates"
-)
-
-const (
-	exampleManifestVersion = "0.0.1"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1beta1/scaffolds/internal/templates/controllers"
 )
 
 var _ plugins.Scaffolder = &apiScaffolder{}
@@ -37,16 +33,18 @@ var _ plugins.Scaffolder = &apiScaffolder{}
 type apiScaffolder struct {
 	config   config.Config
 	resource resource.Resource
+	image string
 
 	// fs is the filesystem that will be used by the scaffolder
 	fs machinery.Filesystem
 }
 
 // NewAPIScaffolder returns a new Scaffolder for declarative
-func NewAPIScaffolder(config config.Config, res resource.Resource) plugins.Scaffolder {
+func NewAPIScaffolder(config config.Config, res resource.Resource, image string) plugins.Scaffolder {
 	return &apiScaffolder{
 		config:   config,
 		resource: res,
+		image: image, // we need to pass here the image to say that we want this value on the structure that represents the scaffold
 	}
 }
 
@@ -70,11 +68,11 @@ func (s *apiScaffolder) Scaffold() error {
 		machinery.WithResource(&s.resource),
 	)
 
+	//todo: remove it : that is only for you troubleshooting
+	fmt.Sprintf("My image informed is %s", s.image)
+
 	err = scaffold.Execute(
-		&templates.Types{},
-		&templates.Controller{},
-		&templates.Channel{ManifestVersion: exampleManifestVersion},
-		&templates.Manifest{ManifestVersion: exampleManifestVersion},
+		&controllers.Controller{Image: s.image}, // now we are passing the image for the template
 	)
 	if err != nil {
 		return fmt.Errorf("error updating scaffold: %w", err)
