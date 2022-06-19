@@ -136,10 +136,3 @@ scaffold_test_project project-v3-addon-and-grafana --plugins="go/v3,declarative,
 scaffold_test_project project-v3-config --component-config
 scaffold_test_project project-v3-with-deploy-image
 
-# [Next version, alpha] Project version v4-alpha
-scaffold_test_project project-v4 --plugins="go/v4-alpha"
-scaffold_test_project project-v4-multigroup --plugins="go/v4-alpha"
-scaffold_test_project project-v4-addon-and-grafana --plugins="go/v4-alpha,declarative,grafana/v1-alpha"
-scaffold_test_project project-v4-config --component-config --plugins="go/v4-alpha"
-scaffold_test_project project-v4-with-deploy-image --plugins="go/v4-alpha"
-
