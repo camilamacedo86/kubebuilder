@@ -18,12 +18,10 @@ package scaffolds
 
 import (
 	"fmt"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds"
 	"strings"
 
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/config/samples"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds"
 
 	"github.com/spf13/afero"
 
@@ -34,6 +32,9 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/api"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/controllers"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/hack"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/config/samples"
+	kustomizev1scaffolds "sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1/scaffolds"
 )
 
 var _ plugins.Scaffolder = &apiScaffolder{}
@@ -158,7 +159,13 @@ func (s *apiScaffolder) Scaffold() error {
 		return fmt.Errorf("error updating main.go: %v", err)
 	}
 
-	return nil
+	// Now we need call the kustomize/v1 plugin to do its scaffolds when we create a new API
+	// todo: when we have the go/v4-alpha plugin we will also need to check what is the plugin used
+	// in the Project layout to know if we should use kustomize/v1 OR kustomize/v2-alpha
+	kustomizeV1Scaffolder := kustomizev1scaffolds.NewAPIScaffolder(s.config,
+		s.resource, true)
+	kustomizeV1Scaffolder.InjectFS(s.fs)
+	return kustomizeV1Scaffolder.Scaffold()
 }
 
 const containerTemplate = `Containers: []corev1.Container{{
