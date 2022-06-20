@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -145,7 +146,6 @@ func (p *createAPISubcommand) InjectConfig(c config.Config) error {
 
 func (p *createAPISubcommand) InjectResource(res *resource.Resource) error {
 	p.resource = res
-
 	p.options.DoAPI = true
 	p.options.DoController = true
 	p.options.UpdateResource(p.resource, p.config)
@@ -197,7 +197,28 @@ func (p *createAPISubcommand) Scaffold(fs machinery.Filesystem) error {
 		p.imageContainerCommand,
 		p.imageContainerPort)
 	scaffolder.InjectFS(fs)
-	return scaffolder.Scaffold()
+	err := scaffolder.Scaffold()
+	if err != nil {
+		return err
+	}
+
+	// Track the resources following a declarative approach
+	cfg := pluginConfig{}
+	if err := p.config.DecodePluginConfig(pluginKey, &cfg); errors.As(err, &config.UnsupportedFieldError{}) {
+		// Config doesn't support per-plugin configuration, so we can't track them
+	} else {
+		// Fail unless they key wasn't found, which just means it is the first resource tracked
+		if err != nil && !errors.As(err, &config.PluginKeyNotFoundError{}) {
+			return err
+		}
+
+		cfg.Resources = append(cfg.Resources, p.resource.GVK)
+		if err := p.config.EncodePluginConfig(pluginKey, cfg); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (p *createAPISubcommand) PostScaffold() error {
