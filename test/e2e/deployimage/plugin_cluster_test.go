@@ -17,9 +17,7 @@ limitations under the License.
 package deployimage
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -60,23 +58,11 @@ var _ = Describe("kubebuilder", func() {
 			kbc, err = utils.NewTestContext(util.KubebuilderBinName, "GO111MODULE=on")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(kbc.Prepare()).To(Succeed())
-
-			By("installing the cert-manager bundle")
-			Expect(kbc.InstallCertManager(false)).To(Succeed())
-
-			By("installing the Prometheus operator")
-			Expect(kbc.InstallPrometheusOperManager()).To(Succeed())
 		})
 
 		AfterEach(func() {
 			By("clean up API objects created during the test")
 			kbc.CleanupManifests(filepath.Join("config", "default"))
-
-			By("uninstalling the Prometheus manager bundle")
-			kbc.UninstallPrometheusOperManager()
-
-			By("uninstalling the cert-manager bundle")
-			kbc.UninstallCertManager(false)
 
 			By("removing controller image and working dir")
 			kbc.Destroy()
@@ -88,7 +74,30 @@ var _ = Describe("kubebuilder", func() {
 				Skip(fmt.Sprintf("cluster version %s does not support v1 CRDs or webhooks",
 					srvVer.GitVersion))
 			}
-			GenerateV3WithDeployImage(kbc)
+
+			var err error
+
+			By("initializing a project with go/v3")
+			err = kbc.Init(
+				"--plugins", "go/v3",
+				"--project-version", "3",
+				"--domain", kbc.Domain,
+				"--fetch-deps=false",
+			)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+			By("creating API definition with deploy-image/v1-alpha plugin")
+			err = kbc.CreateAPI(
+				"--group", kbc.Group,
+				"--version", kbc.Version,
+				"--kind", kbc.Kind,
+				"--plugins", "deploy-image/v1-alpha",
+				"--image", "memcached:1.6.15-alpine",
+				"--image-container-port=", "11211",
+				"--image-container-command=", "memcached -m=64 modern -v",
+			)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
 			Run(kbc)
 		})
 	})
@@ -153,37 +162,6 @@ func Run(kbc *utils.TestContext) {
 	}()
 	EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
 
-	By("granting permissions to access the metrics")
-	_, err = kbc.Kubectl.Command(
-		"create", "clusterrolebinding", fmt.Sprintf("metrics-%s", kbc.TestSuffix),
-		fmt.Sprintf("--clusterrole=e2e-%s-metrics-reader", kbc.TestSuffix),
-		fmt.Sprintf("--serviceaccount=%s:%s", kbc.Kubectl.Namespace, kbc.Kubectl.ServiceAccount))
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-	_ = curlMetrics(kbc)
-
-	By("validating that cert-manager has provisioned the certificate Secret")
-	EventuallyWithOffset(1, func() error {
-		_, err := kbc.Kubectl.Get(
-			true,
-			"secrets", "webhook-server-cert")
-		return err
-	}, time.Minute, time.Second).Should(Succeed())
-
-	By("validating that the Prometheus manager has provisioned the Service")
-	EventuallyWithOffset(1, func() error {
-		_, err := kbc.Kubectl.Get(
-			false,
-			"Service", "prometheus-operator")
-		return err
-	}, time.Minute, time.Second).Should(Succeed())
-
-	By("validating that the ServiceMonitor for Prometheus is applied in the namespace")
-	_, err = kbc.Kubectl.Get(
-		true,
-		"ServiceMonitor")
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
 	By("creating an instance of the CR")
 	// currently controller-runtime doesn't provide a readiness probe, we retry a few times
 	// we can change it to probe the readiness endpoint after CR supports it.
@@ -212,100 +190,5 @@ func Run(kbc *utils.TestContext) {
 		return err
 	}, time.Minute, time.Second).Should(Succeed())
 
-	By("validating that the created resource object gets reconciled in the controller")
-	metricsOutput := curlMetrics(kbc)
-	ExpectWithOffset(1, metricsOutput).To(ContainSubstring(fmt.Sprintf(
-		`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
-		strings.ToLower(kbc.Kind),
-	)))
-
 	//TODO: Add test to check if the deployment with the memcached was create successfully
-}
-
-// curlMetrics curl's the /metrics endpoint, returning all logs once a 200 status is returned.
-func curlMetrics(kbc *utils.TestContext) string {
-	By("reading the metrics token")
-	// Filter token query by service account in case more than one exists in a namespace.
-	token, err := ServiceAccountToken(kbc)
-	ExpectWithOffset(2, err).NotTo(HaveOccurred())
-	ExpectWithOffset(2, len(token)).To(BeNumerically(">", 0))
-
-	By("creating a curl pod")
-	cmdOpts := []string{
-		"run", "curl", "--image=curlimages/curl:7.68.0", "--restart=OnFailure", "--",
-		"curl", "-v", "-k", "-H", fmt.Sprintf(`Authorization: Bearer %s`, strings.TrimSpace(token)),
-		fmt.Sprintf("https://e2e-%s-controller-manager-metrics-service.%s.svc:8443/metrics",
-			kbc.TestSuffix, kbc.Kubectl.Namespace),
-	}
-	_, err = kbc.Kubectl.CommandInNamespace(cmdOpts...)
-	ExpectWithOffset(2, err).NotTo(HaveOccurred())
-
-	By("validating that the curl pod is running as expected")
-	verifyCurlUp := func() error {
-		// Validate pod status
-		status, err := kbc.Kubectl.Get(
-			true,
-			"pods", "curl", "-o", "jsonpath={.status.phase}")
-		ExpectWithOffset(3, err).NotTo(HaveOccurred())
-		if status != "Completed" && status != "Succeeded" {
-			return fmt.Errorf("curl pod in %s status", status)
-		}
-		return nil
-	}
-	EventuallyWithOffset(2, verifyCurlUp, 240*time.Second, time.Second).Should(Succeed())
-
-	By("validating that the metrics endpoint is serving as expected")
-	var metricsOutput string
-	getCurlLogs := func() string {
-		metricsOutput, err = kbc.Kubectl.Logs("curl")
-		ExpectWithOffset(3, err).NotTo(HaveOccurred())
-		return metricsOutput
-	}
-	EventuallyWithOffset(2, getCurlLogs, 10*time.Second, time.Second).Should(ContainSubstring("< HTTP/2 200"))
-
-	By("cleaning up the curl pod")
-	_, err = kbc.Kubectl.Delete(true, "pods/curl")
-	ExpectWithOffset(3, err).NotTo(HaveOccurred())
-
-	return metricsOutput
-}
-
-// ServiceAccountToken provides a helper function that can provide you with a service account
-// token that you can use to interact with the service. This function leverages the k8s'
-// TokenRequest API in raw format in order to make it generic for all version of the k8s that
-// is currently being supported in kubebuilder test infra.
-// TokenRequest API returns the token in raw JWT format itself. There is no conversion required.
-func ServiceAccountToken(kbc *utils.TestContext) (out string, err error) {
-	By("Creating the ServiceAccount token")
-	secretName := fmt.Sprintf("%s-token-request", kbc.Kubectl.ServiceAccount)
-	tokenRequestFile := filepath.Join(kbc.Dir, secretName)
-	err = os.WriteFile(tokenRequestFile, []byte(tokenRequestRawString), os.FileMode(0755))
-	if err != nil {
-		return out, err
-	}
-	var rawJson string
-	Eventually(func() error {
-		// Output of this is already a valid JWT token. No need to covert this from base64 to string format
-		rawJson, err = kbc.Kubectl.Command(
-			"create",
-			"--raw", fmt.Sprintf(
-				"/api/v1/namespaces/%s/serviceaccounts/%s/token",
-				kbc.Kubectl.Namespace,
-				kbc.Kubectl.ServiceAccount,
-			),
-			"-f", tokenRequestFile,
-		)
-		if err != nil {
-			return err
-		}
-		var token tokenRequest
-		err = json.Unmarshal([]byte(rawJson), &token)
-		if err != nil {
-			return err
-		}
-		out = token.Status.Token
-		return nil
-	}, time.Minute, time.Second).Should(Succeed())
-
-	return out, err
 }
