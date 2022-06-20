@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -83,10 +82,8 @@ var _ = Describe("kubebuilder", func() {
 			kbc.Destroy()
 		})
 
-		It("should generate a runnable project go/v3 with v1 CRDs and Webhooks", func() {
+		It("should generate a runnable project go/v3 with v1 CRDs", func() {
 			// Skip if cluster version < 1.16, when v1 CRDs and webhooks did not exist.
-			// Skip if cluster version < 1.19, because securityContext.seccompProfile only works from 1.19
-			// Otherwise, unknown field "seccompProfile" in io.k8s.api.core.v1.PodSecurityContext will be faced
 			if srvVer := kbc.K8sVersion.ServerVersion; srvVer.GetMajorInt() <= 1 && srvVer.GetMinorInt() < 16 {
 				Skip(fmt.Sprintf("cluster version %s does not support v1 CRDs or webhooks",
 					srvVer.GitVersion))
@@ -187,30 +184,6 @@ func Run(kbc *utils.TestContext) {
 		"ServiceMonitor")
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-	By("validating that the mutating|validating webhooks have the CA injected")
-	verifyCAInjection := func() error {
-		mwhOutput, err := kbc.Kubectl.Get(
-			false,
-			"mutatingwebhookconfigurations.admissionregistration.k8s.io",
-			fmt.Sprintf("e2e-%s-mutating-webhook-configuration", kbc.TestSuffix),
-			"-o", "go-template={{ range .webhooks }}{{ .clientConfig.caBundle }}{{ end }}")
-		ExpectWithOffset(2, err).NotTo(HaveOccurred())
-		// check that ca should be long enough, because there may be a place holder "\n"
-		ExpectWithOffset(2, len(mwhOutput)).To(BeNumerically(">", 10))
-
-		vwhOutput, err := kbc.Kubectl.Get(
-			false,
-			"validatingwebhookconfigurations.admissionregistration.k8s.io",
-			fmt.Sprintf("e2e-%s-validating-webhook-configuration", kbc.TestSuffix),
-			"-o", "go-template={{ range .webhooks }}{{ .clientConfig.caBundle }}{{ end }}")
-		ExpectWithOffset(2, err).NotTo(HaveOccurred())
-		// check that ca should be long enough, because there may be a place holder "\n"
-		ExpectWithOffset(2, len(vwhOutput)).To(BeNumerically(">", 10))
-
-		return nil
-	}
-	EventuallyWithOffset(1, verifyCAInjection, time.Minute, time.Second).Should(Succeed())
-
 	By("creating an instance of the CR")
 	// currently controller-runtime doesn't provide a readiness probe, we retry a few times
 	// we can change it to probe the readiness endpoint after CR supports it.
@@ -219,9 +192,23 @@ func Run(kbc *utils.TestContext) {
 
 	sampleFilePath, err := filepath.Abs(filepath.Join(fmt.Sprintf("e2e-%s", kbc.TestSuffix), sampleFile))
 	Expect(err).To(Not(HaveOccurred()))
-
 	EventuallyWithOffset(1, func() error {
 		_, err = kbc.Kubectl.Apply(true, "-f", sampleFilePath)
+		return err
+	}, time.Minute, time.Second).Should(Succeed())
+
+	By("applying the CRD Editor Role")
+	crdEditorRole := filepath.Join("config", "rbac",
+		fmt.Sprintf("%s_editor_role.yaml", strings.ToLower(kbc.Kind)))
+	EventuallyWithOffset(1, func() error {
+		_, err = kbc.Kubectl.Apply(true, "-f", crdEditorRole)
+		return err
+	}, time.Minute, time.Second).Should(Succeed())
+
+	By("applying the CRD Viewer Role")
+	crdViewerRole := filepath.Join("config", "rbac", fmt.Sprintf("%s_viewer_role.yaml", strings.ToLower(kbc.Kind)))
+	EventuallyWithOffset(1, func() error {
+		_, err = kbc.Kubectl.Apply(true, "-f", crdViewerRole)
 		return err
 	}, time.Minute, time.Second).Should(Succeed())
 
@@ -232,16 +219,7 @@ func Run(kbc *utils.TestContext) {
 		strings.ToLower(kbc.Kind),
 	)))
 
-	By("validating that mutating and validating webhooks are working fine")
-	cnt, err := kbc.Kubectl.Get(
-		true,
-		"-f", sampleFile,
-		"-o", "go-template={{ .spec.count }}")
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-	count, err := strconv.Atoi(cnt)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-	ExpectWithOffset(1, count).To(BeNumerically("==", 5))
-
+	//TODO: Add test to check if the deployment with the memcached was create successfully
 }
 
 // curlMetrics curl's the /metrics endpoint, returning all logs once a 200 status is returned.

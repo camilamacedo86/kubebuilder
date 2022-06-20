@@ -55,7 +55,7 @@ func (p Plugin) GetCreateAPISubcommand() plugin.CreateAPISubcommand { return &p.
 type pluginConfig struct {
 	Resources []resource.GVK `json:"resources,omitempty"`
 	// image indicates the image that will be used to scaffold the deployment
-	Image string `json:"image,omitempty"`
+	Image            string `json:"image,omitempty"`
 	ContainerCommand string `json:"containerCommand,omitempty"`
-	ContainerPort string `json:"containerPort,omitempty"`
+	ContainerPort    string `json:"containerPort,omitempty"`
 }

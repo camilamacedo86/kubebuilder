@@ -97,7 +97,7 @@ func (s *apiScaffolder) Scaffold() error {
 		return fmt.Errorf("error updating APIs: %v", err)
 	}
 
-	if err := s.scafffoldControllerWithImage(scaffold); err!= nil {
+	if err := s.scafffoldControllerWithImage(scaffold); err != nil {
 		return fmt.Errorf("error updating controller: %v", err)
 	}
 
