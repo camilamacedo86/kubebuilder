@@ -18,23 +18,20 @@ package scaffolds
 
 import (
 	"fmt"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds"
-	"strings"
-
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
-
 	"github.com/spf13/afero"
+	"path/filepath"
+	"strings"
 
 	"sigs.k8s.io/kubebuilder/v3/pkg/config"
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 	"sigs.k8s.io/kubebuilder/v3/pkg/model/resource"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/api"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/controllers"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/hack"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/config/samples"
 	kustomizev1scaffolds "sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1/scaffolds"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/api"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/config/samples"
+	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/deploy-image/v1alpha1/scaffolds/internal/templates/controllers"
+	golangv3scaffolds "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds"
 )
 
 var _ plugins.Scaffolder = &apiScaffolder{}
@@ -73,14 +70,20 @@ func (s *apiScaffolder) InjectFS(fs machinery.Filesystem) {
 func (s *apiScaffolder) Scaffold() error {
 	fmt.Println("Writing scaffold for you to edit...")
 
-	// Load the boilerplate
-	boilerplate, err := afero.ReadFile(s.fs.FS, hack.DefaultBoilerplatePath)
-	if err != nil {
-		return fmt.Errorf("error scaffolding API/controller: unable to load boilerplate: %w", err)
+	// Now we need call the kustomize/v1 plugin to do its scaffolds when we create a new API
+	// todo: when we have the go/v4-alpha plugin we will also need to check what is the plugin used
+	// in the Project layout to know if we should use kustomize/v1 OR kustomize/v2-alpha
+	golangV3Scaffolder := golangv3scaffolds.NewAPIScaffolder(s.config,
+		s.resource, true)
+	golangV3Scaffolder.InjectFS(s.fs)
+	if err := golangV3Scaffolder.Scaffold(); err != nil {
+		return fmt.Errorf("error scaffolding APIs: %v", err)
 	}
 
-	if err := s.config.UpdateResource(s.resource); err != nil {
-		return fmt.Errorf("error updating resource: %w", err)
+	// Load the boilerplate
+	boilerplate, err := afero.ReadFile(s.fs.FS, filepath.Join("hack", "boilerplate.go.txt"))
+	if err != nil {
+		return fmt.Errorf("error scaffolding API/controller: unable to load boilerplate: %w", err)
 	}
 
 	// Initialize the machinery.Scaffold that will write the files to disk
@@ -92,14 +95,12 @@ func (s *apiScaffolder) Scaffold() error {
 
 	if err := scaffold.Execute(
 		&api.Types{Command: s.command, Port: s.port},
-		&api.Group{},
 	); err != nil {
-		return fmt.Errorf("error scaffolding APIs: %v", err)
+		return fmt.Errorf("error updating APIs: %v", err)
 	}
 
-	controller := &controllers.Controller{ControllerRuntimeVersion: scaffolds.ControllerRuntimeVersion}
+	controller := &controllers.Controller{ControllerRuntimeVersion: golangv3scaffolds.ControllerRuntimeVersion}
 	if err := scaffold.Execute(
-		&controllers.SuiteTest{},
 		controller,
 	); err != nil {
 		return fmt.Errorf("error scaffolding controller: %v", err)
@@ -151,12 +152,6 @@ func (s *apiScaffolder) Scaffold() error {
 		&samples.CRDSample{Command: s.command, Port: s.port},
 	); err != nil {
 		return fmt.Errorf("error updating config/samples: %v", err)
-	}
-
-	if err := scaffold.Execute(
-		&templates.MainUpdater{WireResource: true, WireController: true},
-	); err != nil {
-		return fmt.Errorf("error updating main.go: %v", err)
 	}
 
 	// Now we need call the kustomize/v1 plugin to do its scaffolds when we create a new API
