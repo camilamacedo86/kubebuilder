@@ -70,14 +70,12 @@ func (s *apiScaffolder) InjectFS(fs machinery.Filesystem) {
 func (s *apiScaffolder) Scaffold() error {
 	fmt.Println("Writing scaffold for you to edit...")
 
-	// Now we need call the kustomize/v1 plugin to do its scaffolds when we create a new API
-	// todo: when we have the go/v4-alpha plugin we will also need to check what is the plugin used
-	// in the Project layout to know if we should use kustomize/v1 OR kustomize/v2-alpha
-	golangV3Scaffolder := golangv3scaffolds.NewAPIScaffolder(s.config,
-		s.resource, true)
-	golangV3Scaffolder.InjectFS(s.fs)
-	if err := golangV3Scaffolder.Scaffold(); err != nil {
+	if err := s.scaffoldCreateAPIFromGolang(); err != nil {
 		return fmt.Errorf("error scaffolding APIs: %v", err)
+	}
+
+	if err := s.scaffoldCreateAPIFromKustomize(); err != nil {
+		return fmt.Errorf("error scaffolding kustomize file for the new APIs: %v", err)
 	}
 
 	// Load the boilerplate
@@ -99,6 +97,20 @@ func (s *apiScaffolder) Scaffold() error {
 		return fmt.Errorf("error updating APIs: %v", err)
 	}
 
+	if err := s.scafffoldControllerWithImage(scaffold); err!= nil {
+		return fmt.Errorf("error updating controller: %v", err)
+	}
+
+	if err := scaffold.Execute(
+		&samples.CRDSample{Command: s.command, Port: s.port},
+	); err != nil {
+		return fmt.Errorf("error updating config/samples: %v", err)
+	}
+
+	return nil
+}
+
+func (s *apiScaffolder) scafffoldControllerWithImage(scaffold *machinery.Scaffold) error {
 	controller := &controllers.Controller{ControllerRuntimeVersion: golangv3scaffolds.ControllerRuntimeVersion}
 	if err := scaffold.Execute(
 		controller,
@@ -147,20 +159,31 @@ func (s *apiScaffolder) Scaffold() error {
 			return fmt.Errorf("error scaffolding container port in the controller: %v", err)
 		}
 	}
+	return nil
+}
 
-	if err := scaffold.Execute(
-		&samples.CRDSample{Command: s.command, Port: s.port},
-	); err != nil {
-		return fmt.Errorf("error updating config/samples: %v", err)
-	}
-
+func (s *apiScaffolder) scaffoldCreateAPIFromKustomize() error {
 	// Now we need call the kustomize/v1 plugin to do its scaffolds when we create a new API
 	// todo: when we have the go/v4-alpha plugin we will also need to check what is the plugin used
 	// in the Project layout to know if we should use kustomize/v1 OR kustomize/v2-alpha
 	kustomizeV1Scaffolder := kustomizev1scaffolds.NewAPIScaffolder(s.config,
 		s.resource, true)
 	kustomizeV1Scaffolder.InjectFS(s.fs)
-	return kustomizeV1Scaffolder.Scaffold()
+	if err := kustomizeV1Scaffolder.Scaffold(); err != nil {
+		return fmt.Errorf("error scaffolding kustomize files for the APIs: %v", err)
+	}
+	return nil
+}
+
+func (s *apiScaffolder) scaffoldCreateAPIFromGolang() error {
+	// Now we need call the kustomize/v1 plugin to do its scaffolds when we create a new API
+	// todo: when we have the go/v4-alpha plugin we will also need to check what is the plugin used
+	// in the Project layout to know if we should use kustomize/v1 OR kustomize/v2-alpha
+
+	golangV3Scaffolder := golangv3scaffolds.NewAPIScaffolder(s.config,
+		s.resource, true)
+	golangV3Scaffolder.InjectFS(s.fs)
+	return golangV3Scaffolder.Scaffold()
 }
 
 const containerTemplate = `Containers: []corev1.Container{{

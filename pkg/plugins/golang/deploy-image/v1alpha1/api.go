@@ -211,8 +211,11 @@ func (p *createAPISubcommand) Scaffold(fs machinery.Filesystem) error {
 		if err != nil && !errors.As(err, &config.PluginKeyNotFoundError{}) {
 			return err
 		}
-
 		cfg.Resources = append(cfg.Resources, p.resource.GVK)
+		// Track the options informed
+		cfg.Image = p.image
+		cfg.ContainerCommand = p.imageContainerCommand
+		cfg.ContainerPort = p.imageContainerPort
 		if err := p.config.EncodePluginConfig(pluginKey, cfg); err != nil {
 			return err
 		}
