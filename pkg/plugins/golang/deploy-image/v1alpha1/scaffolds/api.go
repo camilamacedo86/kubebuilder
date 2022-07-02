@@ -111,6 +111,18 @@ func (s *apiScaffolder) Scaffold() error {
 		return fmt.Errorf("error updating config/samples: %v", err)
 	}
 
+	if err := scaffold.Execute(
+		&controllers.SuiteTest{},
+	); err != nil {
+		return fmt.Errorf("error updating controllers/controller_suitetest.go: %v", err)
+	}
+
+	if err := scaffold.Execute(
+		&controllers.ControllerTest{Image: s.image},
+	); err != nil {
+		return fmt.Errorf("error updating controllers/**_controller_test.go: %v", err)
+	}
+
 	return nil
 }
 
