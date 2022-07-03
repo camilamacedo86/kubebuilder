@@ -50,9 +50,6 @@ func (f *ControllerTest) SetTemplateDefaults() error {
 	fmt.Println("creating import for %", f.Resource.Path)
 	f.TemplateBody = controllerTestTemplate
 
-	// This one is to overwrite the controller if it exist
-	f.IfExistsAction = machinery.OverwriteFile
-
 	return nil
 }
 
@@ -62,16 +59,16 @@ const controllerTestTemplate = `{{ .Boilerplate }}
 package {{ if and .MultiGroup .Resource.Group }}{{ .Resource.PackageName }}{{ else }}controllers{{ end }}
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
+	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"context"
 	"time"
+	"context"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	
 	{{ if not (isEmptyStr .Resource.Path) -}}
 	{{ .Resource.ImportAlias }} "{{ .Resource.Path }}"
@@ -83,49 +80,47 @@ var _ = Describe("{{ .Resource.Kind }} controller", func() {
 	// Define utility constants for object names and testing timeouts/durations and intervals.
 	const (
 		{{ .Resource.Kind }}Name      = "test-{{ lower .Resource.Kind }}"
-		{{ .Resource.Kind }}Namespace = "default"
-		DeploymentName = "test-deployment"
-
-		timeout  = time.Second * 10
-		duration = time.Second * 10
-		interval = time.Millisecond * 250
+		{{ .Resource.Kind }}Namespace = "test-{{ lower .Resource.Kind }}"
 	)
 
-	Context("When running the {{ .Resource.Kind }} controller", func() {
-		It("Status of the created deployment should be Running", func() {
-			By("By creating a new {{ .Resource.Kind }}")
+	Context("{{ .Resource.Kind }} controller test", func() {
+		It("should create successfully the custom resource for the {{ .Resource.Kind }}", func() {
 			ctx := context.Background()
-			{{ lower .Resource.Kind }} := &{{ .Resource.ImportAlias }}.{{ .Resource.Kind }}{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "{{ .Resource.Group }}.{{ .Resource.Domain }}/{{ .Resource.Version }}",
-					Kind:       "{{ .Resource.Kind }}",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      {{ .Resource.Kind }}Name,
-					Namespace: {{ .Resource.Kind }}Namespace,
-				},
-				Spec: {{ .Resource.ImportAlias }}.{{ .Resource.Kind }}Spec{
-					Size: 1,
-				},
-			}
-			Expect(k8sClient.Create(ctx, {{ lower .Resource.Kind }})).Should(Succeed())
 
-			{{ .Resource.Kind }}LookupKey := types.NamespacedName{Name: {{ .Resource.Kind }}Name, Namespace: {{ .Resource.Kind }}Namespace}
-			created{{ .Resource.Kind }} := &{{ .Resource.ImportAlias }}.{{ .Resource.Kind }}{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, {{ .Resource.Kind }}LookupKey, created{{ .Resource.Kind }})
-				if err != nil {
-					return false
+			By("Creating the custom resource for the Kind {{ .Resource.Kind }}")
+			{{ lower .Resource.Kind }} := &{{ .Resource.ImportAlias }}.{{ .Resource.Kind }}{}
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: {{ .Resource.Kind }}Name, Namespace: {{ .Resource.Kind }}Namespace}, {{ lower .Resource.Kind }})
+			if err != nil && errors.IsNotFound(err) {
+				// Define a new custom resource
+				{{ lower .Resource.Kind }} := &{{ .Resource.ImportAlias }}.{{ .Resource.Kind }}{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "{{ .Resource.Group }}.{{ .Resource.Domain }}/{{ .Resource.Version }}",
+						Kind:       "{{ .Resource.Kind }}",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      {{ .Resource.Kind }}Name,
+						Namespace: {{ .Resource.Kind }}Namespace,
+					},
+					Spec: {{ .Resource.ImportAlias }}.{{ .Resource.Kind }}Spec{
+						Size: 1,
+					},
 				}
-				return true
-			}, timeout, interval).Should(BeTrue())
-			
-			By("By checking the {{ .Resource.Kind }} have one active deployment")
-			deployment := &appsv1.Deployment{}
-			Eventually(
-				getResourceFunc(ctx, client.ObjectKey{Name: {{ .Resource.Kind }}Name, Namespace: {{ .Resource.Kind }}Namespace}, deployment),
-				duration, interval).Should(BeNil())
+				fmt.Fprintf(GinkgoWriter, fmt.Sprintf("Creating a new custom resource in the namespace: %s with the name %s\n", {{ lower .Resource.Kind }}.Namespace, {{ lower .Resource.Kind }}.Name))
+				err = k8sClient.Create(ctx, {{ lower .Resource.Kind }})
+				if err != nil {
+					Expect(err).To(Not(HaveOccurred()))
+				}
+			} 
+
+			By("Checking with {{ .Resource.Kind }} Kind exist")
+			Eventually(func() error {
+				found := &{{ .Resource.ImportAlias }}.{{ .Resource.Kind }}{}
+				err = k8sClient.Get(ctx, types.NamespacedName{Name: {{ .Resource.Kind }}Name, Namespace: {{ .Resource.Kind }}Namespace}, found)
+				if err != nil {
+					return err
+				}
+				return nil
+			}, time.Minute, time.Second).Should(Succeed())
 		})
 	})
 

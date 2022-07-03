@@ -17,7 +17,9 @@ limitations under the License.
 package controllers
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
+	"fmt"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -26,7 +28,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	examplecomv1alpha1 "sigs.k8s.io/kubebuilder/testdata/project-v3-with-deploy-image/api/v1alpha1"
 )
@@ -36,49 +37,47 @@ var _ = Describe("Memcached controller", func() {
 	// Define utility constants for object names and testing timeouts/durations and intervals.
 	const (
 		MemcachedName      = "test-memcached"
-		MemcachedNamespace = "default"
-		DeploymentName     = "test-deployment"
-
-		timeout  = time.Second * 10
-		duration = time.Second * 10
-		interval = time.Millisecond * 250
+		MemcachedNamespace = "test-memcached"
 	)
 
-	Context("When running the Memcached controller", func() {
-		It("Status of the created deployment should be Running", func() {
-			By("By creating a new Memcached")
+	Context("Memcached controller test", func() {
+		It("should create successfully the custom resource for the Memcached", func() {
 			ctx := context.Background()
-			memcached := &examplecomv1alpha1.Memcached{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "example.com.testproject.org/v1alpha1",
-					Kind:       "Memcached",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      MemcachedName,
-					Namespace: MemcachedNamespace,
-				},
-				Spec: examplecomv1alpha1.MemcachedSpec{
-					Size: 1,
-				},
-			}
-			Expect(k8sClient.Create(ctx, memcached)).Should(Succeed())
 
-			MemcachedLookupKey := types.NamespacedName{Name: MemcachedName, Namespace: MemcachedNamespace}
-			createdMemcached := &examplecomv1alpha1.Memcached{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, MemcachedLookupKey, createdMemcached)
-				if err != nil {
-					return false
+			By("Creating the custom resource for the Kind Memcached")
+			memcached := &examplecomv1alpha1.Memcached{}
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: MemcachedName, Namespace: MemcachedNamespace}, memcached)
+			if err != nil && errors.IsNotFound(err) {
+				// Define a new custom resource
+				memcached := &examplecomv1alpha1.Memcached{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "example.com.testproject.org/v1alpha1",
+						Kind:       "Memcached",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      MemcachedName,
+						Namespace: MemcachedNamespace,
+					},
+					Spec: examplecomv1alpha1.MemcachedSpec{
+						Size: 1,
+					},
 				}
-				return true
-			}, timeout, interval).Should(BeTrue())
+				fmt.Fprintf(GinkgoWriter, fmt.Sprintf("Creating a new custom resource in the namespace: %s with the name %s\n", memcached.Namespace, memcached.Name))
+				err = k8sClient.Create(ctx, memcached)
+				if err != nil {
+					Expect(err).To(Not(HaveOccurred()))
+				}
+			}
 
-			By("By checking the Memcached have one active deployment")
-			deployment := &appsv1.Deployment{}
-			Eventually(
-				getResourceFunc(ctx, client.ObjectKey{Name: MemcachedName, Namespace: MemcachedNamespace}, deployment),
-				duration, interval).Should(BeNil())
+			By("Checking with Memcached Kind exist")
+			Eventually(func() error {
+				found := &examplecomv1alpha1.Memcached{}
+				err = k8sClient.Get(ctx, types.NamespacedName{Name: MemcachedName, Namespace: MemcachedNamespace}, found)
+				if err != nil {
+					return err
+				}
+				return nil
+			}, time.Minute, time.Second).Should(Succeed())
 		})
 	})
 
