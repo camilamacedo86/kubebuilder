@@ -24,20 +24,26 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"context"
+	"fmt"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	examplecomv1alpha1 "sigs.k8s.io/kubebuilder/testdata/project-v3-with-deploy-image/api/v1alpha1"
 )
 
+const memcachedFinalizer = "example.com.testproject.org/finalizer"
+
 // MemcachedReconciler reconciles a Memcached object
 type MemcachedReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	recorder record.EventRecorder
 }
 
 // The following markers are used to generate the rules permissions on config/rbac using controller-gen
@@ -47,6 +53,7 @@ type MemcachedReconciler struct {
 //+kubebuilder:rbac:groups=example.com.testproject.org,resources=memcacheds,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=example.com.testproject.org,resources=memcacheds/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=example.com.testproject.org,resources=memcacheds/finalizers,verbs=update
+//+kubebuilder:rbac:groups=example.com.testproject.org,resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
@@ -119,6 +126,35 @@ func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// The reconciliation will only stop when we be able to ensure
 		// the desired state on the cluster
 		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// Check if the Memcached instance is marked to be deleted, which is
+	// indicated by the deletion timestamp being set.
+	isMemcachedMarkedToBeDeleted := memcached.GetDeletionTimestamp() != nil
+	if isMemcachedMarkedToBeDeleted {
+		if controllerutil.ContainsFinalizer(memcached, memcachedFinalizer) {
+			// Run finalization logic for memcachedFinalizer. If the
+			// finalization logic fails, don't remove the finalizer so
+			// that we can retry during the next reconciliation.
+			r.recorder.Event(memcached, "Normal", "Deleting", fmt.Sprintf("Custom Resource Definition %s/%s is being deleted", memcached.Namespace, memcached.Name))
+			r.recorder.Event(found, "Normal", "Deleting", fmt.Sprintf("Deployment %s/%s is being deleted", memcached.Namespace, memcached.Name))
+
+			controllerutil.RemoveFinalizer(memcached, memcachedFinalizer)
+			err := r.Update(ctx, memcached)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	// Add finalizer for this CR
+	if !controllerutil.ContainsFinalizer(memcached, memcachedFinalizer) {
+		controllerutil.AddFinalizer(memcached, memcachedFinalizer)
+		err = r.Update(ctx, memcached)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	return ctrl.Result{}, nil
 }

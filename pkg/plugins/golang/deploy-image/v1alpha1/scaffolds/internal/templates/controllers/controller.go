@@ -72,21 +72,27 @@ import (
 
 	"context"
 	"time"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	
 	{{ if not (isEmptyStr .Resource.Path) -}}
 	{{ .Resource.ImportAlias }} "{{ .Resource.Path }}"
 	{{- end }}
 )
 
+const {{ lower .Resource.Kind }}Finalizer = "{{ .Resource.Group }}.{{ .Resource.Domain }}/finalizer"
+
 // {{ .Resource.Kind }}Reconciler reconciles a {{ .Resource.Kind }} object
 type {{ .Resource.Kind }}Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	recorder record.EventRecorder
 }
 // The following markers are used to generate the rules permissions on config/rbac using controller-gen
 // when the command <make manifests> is executed. 
@@ -95,6 +101,7 @@ type {{ .Resource.Kind }}Reconciler struct {
 //+kubebuilder:rbac:groups={{ .Resource.QualifiedGroup }},resources={{ .Resource.Plural }},verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups={{ .Resource.QualifiedGroup }},resources={{ .Resource.Plural }}/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups={{ .Resource.QualifiedGroup }},resources={{ .Resource.Plural }}/finalizers,verbs=update
+//+kubebuilder:rbac:groups={{ .Resource.QualifiedGroup }},resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
@@ -168,6 +175,35 @@ func (r *{{ .Resource.Kind }}Reconciler) Reconcile(ctx context.Context, req ctrl
 		// the desired state on the cluster
 		return ctrl.Result{Requeue: true}, nil
 	}
+
+	// Check if the {{ .Resource.Kind }} instance is marked to be deleted, which is
+    // indicated by the deletion timestamp being set.
+    is{{ .Resource.Kind }}MarkedToBeDeleted := {{ lower .Resource.Kind }}.GetDeletionTimestamp() != nil
+    if is{{ .Resource.Kind }}MarkedToBeDeleted {
+        if controllerutil.ContainsFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer) {
+            // Run finalization logic for {{ lower .Resource.Kind }}Finalizer. If the
+            // finalization logic fails, don't remove the finalizer so
+            // that we can retry during the next reconciliation.
+			r.recorder.Event({{ lower .Resource.Kind }}, "Normal", "Deleting", fmt.Sprintf("Custom Resource Definition %s/%s is being deleted", {{ lower .Resource.Kind }}.Namespace, {{ lower .Resource.Kind }}.Name))
+			r.recorder.Event(found, "Normal", "Deleting", fmt.Sprintf("Deployment %s/%s is being deleted", {{ lower .Resource.Kind }}.Namespace, {{ lower .Resource.Kind }}.Name))
+
+            controllerutil.RemoveFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer)
+            err := r.Update(ctx, {{ lower .Resource.Kind }})
+            if err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+        return ctrl.Result{}, nil
+    }
+
+    // Add finalizer for this CR
+    if !controllerutil.ContainsFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer) {
+        controllerutil.AddFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer)
+        err = r.Update(ctx, {{ lower .Resource.Kind }})
+        if err != nil {
+            return ctrl.Result{}, err
+        }
+    }
 	return ctrl.Result{}, nil
 }
 
