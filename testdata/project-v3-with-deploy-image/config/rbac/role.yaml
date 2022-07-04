@@ -54,6 +54,13 @@ rules:
 - apiGroups:
   - example.com.testproject.org
   resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - example.com.testproject.org
+  resources:
   - memcacheds
   verbs:
   - create
