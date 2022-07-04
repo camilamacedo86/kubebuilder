@@ -264,6 +264,23 @@ func Run(kbc *utils.TestContext, imageCR string) {
 		return err
 	}, time.Minute, time.Second).Should(Succeed())
 
+	//Testing the finalizer
+	EventuallyWithOffset(1, func() error {
+		_, err = kbc.Kubectl.Delete(true, "-f", sampleFilePath)
+		return err
+	}, time.Minute, time.Second).Should(Succeed())
+
+	EventuallyWithOffset(1, func() error {
+		events, err := kbc.Kubectl.Get(true, "events", "--field-selector", "type", "Warning",
+			"-o", "jsonpath={.items[*].message}",
+		)
+		ExpectWithOffset(2, err).NotTo(HaveOccurred())
+		if !strings.Contains(events, "is being deleted from the namespace") {
+			return err
+		}
+		return nil
+	}, time.Minute, time.Second).Should(Succeed())
+
 	//TODO: We need to understand why it is not passing in the prow but is passing locally
 	// By("validating that pod(s) status.phase=Running")
 	// var podsOutput string

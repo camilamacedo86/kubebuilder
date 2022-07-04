@@ -138,6 +138,43 @@ func (r *{{ .Resource.Kind }}Reconciler) Reconcile(ctx context.Context, req ctrl
 		return ctrl.Result{}, err
 	}
 
+	// Let's add a finalizer. Then, we can define some operations which should
+	// occurs before the custom resource to be deleted.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers/
+	// NOTE: You should not use finalizer to delete the resources that are
+	// created in this reconciliation and have the ownerRef set by ctrl.SetControllerReference
+	// because these will get deleted via k8s api
+	if !controllerutil.ContainsFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer) {
+		controllerutil.AddFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer)
+		err = r.Update(ctx, {{ lower .Resource.Kind }})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	// Check if the Busybox instance is marked to be deleted, which is
+	// indicated by the deletion timestamp being set.
+	isBusyboxMarkedToBeDeleted := busybox.GetDeletionTimestamp() != nil
+	if isBusyboxMarkedToBeDeleted {
+		if controllerutil.ContainsFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer) {
+			// Run finalization logic for memcachedFinalizer. If the
+			// finalization logic fails, don't remove the finalizer so
+			// that we can retry during the next reconciliation.
+			if err := r.{{ lower .Resource.Kind }}Busybox(log, {{ lower .Resource.Kind }}); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			// Remove memcachedFinalizer. Once all finalizers have been
+			// removed, the object will be deleted.
+			controllerutil.RemoveFinalizer(busybox, {{ lower .Resource.Kind }}Finalizer)
+			err := r.Update(ctx, {{ lower .Resource.Kind }})
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
 	// Check if the deployment already exists, if not create a new one
 	found := &appsv1.Deployment{}
 	err = r.Get(ctx, types.NamespacedName{Name: {{ lower .Resource.Kind }}.Name, Namespace: {{ lower .Resource.Kind }}.Namespace}, found)
@@ -176,35 +213,23 @@ func (r *{{ .Resource.Kind }}Reconciler) Reconcile(ctx context.Context, req ctrl
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	// Check if the {{ .Resource.Kind }} instance is marked to be deleted, which is
-    // indicated by the deletion timestamp being set.
-    is{{ .Resource.Kind }}MarkedToBeDeleted := {{ lower .Resource.Kind }}.GetDeletionTimestamp() != nil
-    if is{{ .Resource.Kind }}MarkedToBeDeleted {
-        if controllerutil.ContainsFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer) {
-            // Run finalization logic for {{ lower .Resource.Kind }}Finalizer. If the
-            // finalization logic fails, don't remove the finalizer so
-            // that we can retry during the next reconciliation.
-			r.recorder.Event({{ lower .Resource.Kind }}, "Normal", "Deleting", fmt.Sprintf("Custom Resource Definition %s/%s is being deleted", {{ lower .Resource.Kind }}.Namespace, {{ lower .Resource.Kind }}.Name))
-			r.recorder.Event(found, "Normal", "Deleting", fmt.Sprintf("Deployment %s/%s is being deleted", {{ lower .Resource.Kind }}.Namespace, {{ lower .Resource.Kind }}.Name))
-
-            controllerutil.RemoveFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer)
-            err := r.Update(ctx, {{ lower .Resource.Kind }})
-            if err != nil {
-                return ctrl.Result{}, err
-            }
-        }
-        return ctrl.Result{}, nil
-    }
-
-    // Add finalizer for this CR
-    if !controllerutil.ContainsFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer) {
-        controllerutil.AddFinalizer({{ lower .Resource.Kind }}, {{ lower .Resource.Kind }}Finalizer)
-        err = r.Update(ctx, {{ lower .Resource.Kind }})
-        if err != nil {
-            return ctrl.Result{}, err
-        }
-    }
 	return ctrl.Result{}, nil
+}
+
+// finalize{{ .Resource.Kind }} will perform the required operations before delete the CR.
+func (r *{{ .Resource.Kind }}Reconciler) finalize{{ .Resource.Kind }}(log logr.Logger, cr *{{ .Resource.ImportAlias }}.{{ .Resource.Kind }}) error {
+	// TODO(user): Add the cleanup steps that the operator
+	// needs to do before the CR can be deleted. Examples
+	// of finalizers include performing backups and deleting
+	// resources that are not owned by this CR, like a PVC.
+	// The following implementation will raise an event
+	r.recorder.Event(cr, "Warning", "Deleting",
+		fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
+		cr.Name,
+		cr.Namespace))
+
+	log.Info("Successfully finalized {{ lower .Resource.Kind }}")
+	return nil
 }
 
 // deploymentFor{{ .Resource.Kind }} returns a {{ .Resource.Kind }} Deployment object
