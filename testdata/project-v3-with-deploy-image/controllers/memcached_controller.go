@@ -99,10 +99,23 @@ func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	meta.SetStatusCondition(&memcached.Status.Conditions, metav1.Condition{Type: typeAvailableMemcached, Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
-	if err = r.Status().Update(ctx, memcached); err != nil {
-		log.Error(err, "Failed to update Memcached status")
-		return ctrl.Result{}, err
+	// Let's just set the status as Unknown when no status are available
+	if memcached.Status.Conditions == nil || len(memcached.Status.Conditions) == 0 {
+		meta.SetStatusCondition(&memcached.Status.Conditions, metav1.Condition{Type: typeAvailableMemcached, Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
+		if err = r.Status().Update(ctx, memcached); err != nil {
+			log.Error(err, "Failed to update Memcached status")
+			return ctrl.Result{}, err
+		}
+
+		// Let's re-fetch the memcached Custom Resource after update the status
+		// so that we have the latest state of the resource on the cluster and we will avoid
+		// raise the issue "the object has been modified, please apply
+		// your changes to the latest version and try again" which would re-trigger the reconciliation
+		// if we try to update it again in the following operations
+		if err := r.Get(ctx, req.NamespacedName, memcached); err != nil {
+			log.Error(err, "Failed to re-fetch memcached")
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Let's add a finalizer. Then, we can define some operations which should
@@ -128,7 +141,7 @@ func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if controllerutil.ContainsFinalizer(memcached, memcachedFinalizer) {
 			log.Info("Performing Finalizer Operations for Memcached before delete CR")
 
-			// The following implementation will update the status
+			// Let's add here an status "Downgrade" to define that this resource begin its process to be terminated.
 			meta.SetStatusCondition(&memcached.Status.Conditions, metav1.Condition{Type: typeDegradedMemcached,
 				Status: metav1.ConditionUnknown, Reason: "Finalizing",
 				Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", memcached.Name)})
@@ -138,9 +151,23 @@ func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
+			// Perform all operations required before remove the finalizer and allow
+			// the Kubernetes API to remove the custom custom resource.
 			r.doFinalizerOperationsForMemcached(memcached)
 
-			// TODO(user): If you add operations to the doFinalizerOperationsForMemcached method then you need to ensure that all worked fine before deleting and updating the Downgrade status
+			// TODO(user): If you add operations to the doFinalizerOperationsForMemcached method
+			// then you need to ensure that all worked fine before deleting and updating the Downgrade status
+			// otherwise, you should requeue here.
+
+			// Re-fetch the memcached Custom Resource before update the status
+			// so that we have the latest state of the resource on the cluster and we will avoid
+			// raise the issue "the object has been modified, please apply
+			// your changes to the latest version and try again" which would re-trigger the reconciliation
+			if err := r.Get(ctx, req.NamespacedName, memcached); err != nil {
+				log.Error(err, "Failed to re-fetch memcached")
+				return ctrl.Result{}, err
+			}
+
 			meta.SetStatusCondition(&memcached.Status.Conditions, metav1.Condition{Type: typeDegradedMemcached,
 				Status: metav1.ConditionTrue, Reason: "Finalizing",
 				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", memcached.Name)})
@@ -215,6 +242,15 @@ func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Error(err, "Failed to update Deployment",
 				"Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
 
+			// Re-fetch the memcached Custom Resource before update the status
+			// so that we have the latest state of the resource on the cluster and we will avoid
+			// raise the issue "the object has been modified, please apply
+			// your changes to the latest version and try again" which would re-trigger the reconciliation
+			if err := r.Get(ctx, req.NamespacedName, memcached); err != nil {
+				log.Error(err, "Failed to re-fetch memcached")
+				return ctrl.Result{}, err
+			}
+
 			// The following implementation will update the status
 			meta.SetStatusCondition(&memcached.Status.Conditions, metav1.Condition{Type: typeAvailableMemcached,
 				Status: metav1.ConditionFalse, Reason: "Resizing",
@@ -228,9 +264,9 @@ func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 
-		// Since it fails we want to re-queue the reconciliation
-		// The reconciliation will only stop when we be able to ensure
-		// the desired state on the cluster
+		// Now, that we update the size we want to requeue the reconciliation
+		// so that we can ensure that we have the latest state of the resource before
+		// update. Also, it will help ensure the desired state on the cluster
 		return ctrl.Result{Requeue: true}, nil
 	}
 
