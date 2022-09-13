@@ -1,11 +1,10 @@
 name: release
 on:
-  push:
   pull_request:
-#  push:
-#    tags:
-#      - 'v*'
-#  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   goreleaser:
@@ -45,7 +44,6 @@ jobs:
           args: release -f ./build/.goreleaser.yml --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-}
       - name: Upload assets
         uses: actions/upload-artifact@v3
         with:
