@@ -17,7 +17,7 @@
 # - kubectl (fetch)
 # - etcd (fetch)
 
-FROM golang:1.12.5-stretch as darwin
+FROM golang:1.18.3-stretch as darwin
 # Install tools
 ENV CGO 0
 ENV DEST /usr/local/kubebuilder/bin/
