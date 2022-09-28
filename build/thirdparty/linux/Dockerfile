@@ -18,7 +18,7 @@
 # - etcd (fetch)
 
 # no need for anything fancy
-FROM alpine:3.8 as linux
+FROM alpine:3.16.2 as linux
 # Install tools
 ENV DEST /usr/local/kubebuilder/bin/
 
@@ -42,5 +42,5 @@ RUN curl -sLO https://github.com/coreos/etcd/releases/download/v${ETCD_VERSION}/
 WORKDIR /usr/local
 RUN tar -czvf /kubebuilder_linux_amd64.tar.gz kubebuilder/
 
-FROM alpine:3.8
+FROM alpine:3.16.2
 COPY --from=linux /kubebuilder_linux_amd64.tar.gz /kubebuilder_linux_amd64.tar.gz
