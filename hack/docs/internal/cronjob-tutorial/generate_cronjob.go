@@ -561,6 +561,11 @@ func updateKustomization(sp *Sample) {
 
 	err = pluginutil.UncommentCode(
 		filepath.Join(sp.ctx.Dir, "config/default/kustomization.yaml"),
+		`#- ../policy`, `#`)
+	CheckError("uncomment policy in the default/kustomization", err)
+
+	err = pluginutil.UncommentCode(
+		filepath.Join(sp.ctx.Dir, "config/default/kustomization.yaml"),
 		DefaultKustomization, `#`)
 	CheckError("fixing default/kustomization", err)
 

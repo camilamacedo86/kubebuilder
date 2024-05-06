@@ -18,6 +18,7 @@ package scaffolds
 
 import (
 	log "github.com/sirupsen/logrus"
+	"sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/policy"
 
 	"sigs.k8s.io/kubebuilder/v4/pkg/config"
 	"sigs.k8s.io/kubebuilder/v4/pkg/machinery"
@@ -76,6 +77,8 @@ func (s *initScaffolder) Scaffold() error {
 		&kdefault.ManagerMetricsPatch{},
 		&manager.Config{Image: imageName},
 		&kdefault.Kustomization{},
+		&policy.Kustomization{},
+		&policy.NetworkPolicy{},
 		&prometheus.Kustomization{},
 		&prometheus.Monitor{},
 	}

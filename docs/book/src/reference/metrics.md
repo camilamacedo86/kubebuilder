@@ -78,6 +78,17 @@ NetworkPolicy acts as a basic firewall for pods within a Kubernetes cluster, con
 flow at the IP address or port level. However, it doesn't handle authentication (authn), authorization (authz),
 or encryption directly like [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy) solution.
 
+Uncomment the following line in the `config/default/kustomization.yaml`:
+
+```
+# [NETWORK POLICY FOR METRICS] Protect the /metrics endpoint with NetworkPolicy. If you want your controller-manager to
+# expose the /metrics, it is recommended uncomment the following line. Therefore, only Pod(s) with the label
+# 'allow-metrics' which are running in a namespace which also has the same label will be able to gather the metrics.
+# Be aware that NetworkPolicy alone does not ensure fully protection. Please, ensure that you check the Metrics
+# documentation: https://kubebuilder.io/reference/metrics
+#- ../policy
+```
+
 ### By exposing the metrics endpoint using HTTPS and CertManager
 
 Integrating `cert-manager` with your metrics service can secure the endpoint via TLS encryption.

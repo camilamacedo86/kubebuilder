@@ -72,6 +72,12 @@ resources:
 #- ../prometheus
 # [METRICS] To enable the controller manager metrics service, uncomment the following line.
 #- metrics_service.yaml
+# [NETWORK POLICY] Protect the /metrics endpoint with NetworkPolicy. If you want your controller-manager to
+# expose the /metrics, it is recommended uncomment the following line. Therefore, only Pod(s) running a namespace
+# with the label 'monitoring: enabled' will be able to gather the metrics.
+# Be aware that NetworkPolicy alone does not ensure fully protection. Please, ensure that you check the Metrics
+# documentation: https://kubebuilder.io/reference/metrics
+#- ../policy
 
 # Uncomment the patches line if you enable Metrics, and/or are using webhooks and cert-manager
 #patches:

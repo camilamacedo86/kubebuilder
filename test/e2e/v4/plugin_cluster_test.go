@@ -56,29 +56,39 @@ var _ = Describe("kubebuilder", func() {
 		It("should generate a runnable project", func() {
 			kbc.IsRestricted = false
 			GenerateV4(kbc)
-			Run(kbc, true, false, true)
+			Run(kbc, true, false, true, false)
 		})
 		It("should generate a runnable project with the Installer", func() {
 			kbc.IsRestricted = false
 			GenerateV4(kbc)
-			Run(kbc, false, true, true)
+			Run(kbc, false, true, true, false)
 		})
 		It("should generate a runnable project without metrics exposed", func() {
 			kbc.IsRestricted = false
 			GenerateV4WithoutMetrics(kbc)
-			Run(kbc, true, false, false)
+			Run(kbc, true, false, false, false)
+		})
+		It("should generate a runnable project with metrics protected by network policies", func() {
+			kbc.IsRestricted = false
+			GenerateV4WithNetworkPoliciesWithoutWebhooks(kbc)
+			Run(kbc, false, false, true, true)
+		})
+		It("should generate a runnable project with webhooks and metrics protected by network policies", func() {
+			kbc.IsRestricted = false
+			GenerateV4WithNetworkPolicies(kbc)
+			Run(kbc, false, false, true, true)
 		})
 		It("should generate a runnable project with the manager running "+
 			"as restricted and without webhooks", func() {
 			kbc.IsRestricted = true
 			GenerateV4WithoutWebhooks(kbc)
-			Run(kbc, false, false, true)
+			Run(kbc, false, false, true, false)
 		})
 	})
 })
 
 // Run runs a set of e2e tests for a scaffolded project defined by a TestContext.
-func Run(kbc *utils.TestContext, hasWebhook, isToUseInstaller, hasMetrics bool) {
+func Run(kbc *utils.TestContext, hasWebhook, isToUseInstaller, hasMetrics bool, hasNetworkPolicies bool) {
 	var controllerPodName string
 	var err error
 	var output []byte
@@ -217,6 +227,34 @@ func Run(kbc *utils.TestContext, hasWebhook, isToUseInstaller, hasMetrics bool) 
 		_, err = kbc.Kubectl.Apply(true, "-f", sampleFile)
 		return err
 	}, time.Minute, time.Second).Should(Succeed())
+
+	if hasNetworkPolicies {
+		By("Checking for Calico pods")
+		outputGet, err := kbc.Kubectl.Get(
+			false,
+			"pods",
+			"-n", "kube-system",
+			"-l", "k8s-app=calico-node",
+			"-o", "jsonpath={.items[*].status.phase}",
+		)
+		Expect(err).NotTo(HaveOccurred(), "Failed to get Calico pods")
+		Expect(outputGet).To(ContainSubstring("Running"), "All Calico pods should be in Running state")
+
+		By("labeling the namespace to allow consume the metrics")
+		_, err = kbc.Kubectl.Command("label", "namespaces", kbc.Kubectl.Namespace,
+			"monitoring=enabled")
+		ExpectWithOffset(2, err).NotTo(HaveOccurred())
+
+		By("Ensuring the Protect Metrics NetworkPolicy exists", func() {
+			output, err := kbc.Kubectl.Get(
+				true,
+				"networkpolicy", fmt.Sprintf("e2e-%s-protect-metrics", kbc.TestSuffix),
+			)
+			Expect(err).NotTo(HaveOccurred(), "NetworkPolicy protect-metrics should exist in the namespace")
+			Expect(output).To(ContainSubstring("protect-metrics"), "NetworkPolicy protect-metrics "+
+				"should be present in the output")
+		})
+	}
 
 	if hasMetrics {
 		By("checking the metrics values to validate that the created resource object gets reconciled")
