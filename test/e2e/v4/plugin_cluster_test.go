@@ -69,24 +69,29 @@ var _ = Describe("kubebuilder", func() {
 		It("should generate a runnable project", func() {
 			kbc.IsRestricted = false
 			GenerateV4(kbc)
-			Run(kbc, true, false)
+			Run(kbc, true, false, true)
 		})
 		It("should generate a runnable project with the Installer", func() {
 			kbc.IsRestricted = false
 			GenerateV4(kbc)
-			Run(kbc, false, true)
+			Run(kbc, false, true, true)
+		})
+		It("should generate a runnable project without metrics exposed", func() {
+			kbc.IsRestricted = false
+			GenerateV4WithoutMetrics(kbc)
+			Run(kbc, true, false, false)
 		})
 		It("should generate a runnable project with the manager running "+
 			"as restricted and without webhooks", func() {
 			kbc.IsRestricted = true
 			GenerateV4WithoutWebhooks(kbc)
-			Run(kbc, false, false)
+			Run(kbc, false, false, true)
 		})
 	})
 })
 
 // Run runs a set of e2e tests for a scaffolded project defined by a TestContext.
-func Run(kbc *utils.TestContext, hasWebhook, isToUseInstaller bool) {
+func Run(kbc *utils.TestContext, hasWebhook, isToUseInstaller, hasMetrics bool) {
 	var controllerPodName string
 	var err error
 	var output []byte
@@ -226,12 +231,19 @@ func Run(kbc *utils.TestContext, hasWebhook, isToUseInstaller bool) {
 		return err
 	}, time.Minute, time.Second).Should(Succeed())
 
-	By("checking the metrics values to validate that the created resource object gets reconciled")
-	metricsOutput := getMetricsOutput(kbc)
-	ExpectWithOffset(1, metricsOutput).To(ContainSubstring(fmt.Sprintf(
-		`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
-		strings.ToLower(kbc.Kind),
-	)))
+	if hasMetrics {
+		By("checking the metrics values to validate that the created resource object gets reconciled")
+		metricsOutput := getMetricsOutput(kbc)
+		ExpectWithOffset(1, metricsOutput).To(ContainSubstring(fmt.Sprintf(
+			`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
+			strings.ToLower(kbc.Kind),
+		)))
+	}
+
+	if !hasMetrics {
+		By("validating the metrics endpoint is not working as expected")
+		metricsShouldBeUnavailable(kbc)
+	}
 
 	if hasWebhook {
 		By("validating that mutating and validating webhooks are working fine")
@@ -348,6 +360,46 @@ func getMetricsOutput(kbc *utils.TestContext) string {
 	EventuallyWithOffset(2, getCurlLogs, 10*time.Second, time.Second).Should(ContainSubstring("< HTTP/1.1 200 OK"))
 	removeCurlPod(kbc)
 	return metricsOutput
+}
+
+func metricsShouldBeUnavailable(kbc *utils.TestContext) {
+	_, err := kbc.Kubectl.Command(
+		"create", "clusterrolebinding", fmt.Sprintf("metrics-%s", kbc.TestSuffix),
+		fmt.Sprintf("--clusterrole=e2e-%s-metrics-reader", kbc.TestSuffix),
+		fmt.Sprintf("--serviceaccount=%s:%s", kbc.Kubectl.Namespace, kbc.Kubectl.ServiceAccount))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	token, err := serviceAccountToken(kbc)
+	ExpectWithOffset(2, err).NotTo(HaveOccurred())
+	ExpectWithOffset(2, token).NotTo(BeEmpty())
+
+	By("creating a curl pod to access the metrics endpoint")
+	cmdOpts := cmdOptsToCreateCurlPod(kbc, token)
+	_, err = kbc.Kubectl.CommandInNamespace(cmdOpts...)
+	ExpectWithOffset(2, err).NotTo(HaveOccurred())
+
+	By("validating that the curl pod fail as expected")
+	verifyCurlUp := func() error {
+		status, err := kbc.Kubectl.Get(
+			true,
+			"pods", "curl", "-o", "jsonpath={.status.phase}")
+		ExpectWithOffset(3, err).NotTo(HaveOccurred())
+		if status != "Failed" {
+			return fmt.Errorf(
+				"curl pod in %s status when should fail with an error", status)
+		}
+		return nil
+	}
+	EventuallyWithOffset(2, verifyCurlUp, 240*time.Second, time.Second).Should(Succeed())
+
+	By("validating that the metrics endpoint is not working as expected")
+	getCurlLogs := func() string {
+		metricsOutput, err := kbc.Kubectl.Logs("curl")
+		ExpectWithOffset(3, err).NotTo(HaveOccurred())
+		return metricsOutput
+	}
+	EventuallyWithOffset(2, getCurlLogs, 10*time.Second, time.Second).Should(ContainSubstring("Could not resolve host"))
+	removeCurlPod(kbc)
 }
 
 func cmdOptsToCreateCurlPod(kbc *utils.TestContext, token string) []string {

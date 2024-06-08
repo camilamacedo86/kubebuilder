@@ -76,6 +76,7 @@ func (s *initScaffolder) Scaffold() error {
 		&rbac.LeaderElectionRoleBinding{},
 		&rbac.ServiceAccount{},
 		&manager.Kustomization{},
+		&kdefault.ManagerMetricsPatch{},
 		&manager.Config{Image: imageName},
 		&kdefault.Kustomization{},
 		&prometheus.Kustomization{},

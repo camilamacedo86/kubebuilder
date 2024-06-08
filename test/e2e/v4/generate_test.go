@@ -73,14 +73,57 @@ func GenerateV4(kbc *utils.TestContext) {
 	}
 }
 
+// GenerateV4WithoutMetrics implements a go/v4 plugin project defined by a TestContext.
+func GenerateV4WithoutMetrics(kbc *utils.TestContext) {
+	initingTheProject(kbc)
+	creatingAPI(kbc)
+
+	By("scaffolding mutating and validating webhooks")
+	err := kbc.CreateWebhook(
+		"--group", kbc.Group,
+		"--version", kbc.Version,
+		"--kind", kbc.Kind,
+		"--defaulting",
+		"--programmatic-validation",
+	)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	By("implementing the mutating and validating webhooks")
+	err = pluginutil.ImplementWebhooks(filepath.Join(
+		kbc.Dir, "api", kbc.Version,
+		fmt.Sprintf("%s_webhook.go", strings.ToLower(kbc.Kind))))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	ExpectWithOffset(1, pluginutil.UncommentCode(
+		filepath.Join(kbc.Dir, "config", "default", "kustomization.yaml"),
+		"#- ../certmanager", "#")).To(Succeed())
+	ExpectWithOffset(1, pluginutil.UncommentCode(
+		filepath.Join(kbc.Dir, "config", "default", "kustomization.yaml"),
+		"#- ../prometheus", "#")).To(Succeed())
+	ExpectWithOffset(1, pluginutil.UncommentCode(
+		filepath.Join(kbc.Dir, "config", "default", "kustomization.yaml"),
+		"#- path: webhookcainjection_patch.yaml", "#")).To(Succeed())
+	ExpectWithOffset(1, pluginutil.UncommentCode(filepath.Join(kbc.Dir, "config", "default", "kustomization.yaml"),
+		certManagerTarget, "#")).To(Succeed())
+	// Disable metrics
+	ExpectWithOffset(1, pluginutil.CommentCode(
+		filepath.Join(kbc.Dir, "config", "default", "kustomization.yaml"),
+		"- metrics_service.yaml", "#")).To(Succeed())
+	ExpectWithOffset(1, pluginutil.CommentCode(
+		filepath.Join(kbc.Dir, "config", "default", "kustomization.yaml"),
+		metricsTarget, "#")).To(Succeed())
+
+	if kbc.IsRestricted {
+		By("uncomment kustomize files to ensure that pods are restricted")
+		uncommentPodStandards(kbc)
+	}
+}
+
 // GenerateV4WithoutWebhooks implements a go/v4 plugin with APIs and enable Prometheus and CertManager
 func GenerateV4WithoutWebhooks(kbc *utils.TestContext) {
 	initingTheProject(kbc)
 	creatingAPI(kbc)
 
-	ExpectWithOffset(1, pluginutil.UncommentCode(
-		filepath.Join(kbc.Dir, "config", "default", "kustomization.yaml"),
-		"#patches:", "#")).To(Succeed())
 	ExpectWithOffset(1, pluginutil.UncommentCode(
 		filepath.Join(kbc.Dir, "config", "default", "kustomization.yaml"),
 		"#- ../prometheus", "#")).To(Succeed())
@@ -123,6 +166,10 @@ func initingTheProject(kbc *utils.TestContext) {
 	)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }
+
+const metricsTarget = `- path: manager_metrics_patch.yaml
+  target:
+    kind: Deployment`
 
 //nolint:lll
 const certManagerTarget = `#replacements:
