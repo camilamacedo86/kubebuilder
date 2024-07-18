@@ -17,17 +17,73 @@ jobs:
         with:
           go-version: '~1.22'
 
-      - name: Create kind cluster
-        run: kind create cluster
-
-      - name: Prepare the environment
-        run: |
-          KUSTOMIZATION_FILE_PATH="testdata/project-v4/config/default/kustomization.yaml"
-          sed -i '25s/^#//' $KUSTOMIZATION_FILE_PATH
-          sed -i '46s/^#//' $KUSTOMIZATION_FILE_PATH
-
-      - name: Test
+      - name: Run initial tests and setup envtest
         run: |
           cd testdata/project-v4
           go mod tidy
-          make test-e2e
+          make test
+
+      - name: Check etcd status without network
+        run: |
+          if pgrep -x "./testdata/project-v4/bin/k8s/1.30.0-darwin-arm64/etcd" > /dev/null
+          then
+            echo "etcd is running"
+          else
+            echo "etcd is NOT running"
+          fi
+
+      - name: Check Kubernetes API Server status without network
+        run: |
+          if pgrep -x "./testdata/project-v4/bin/k8s/1.30.0-darwin-arm64/kube-apiserver" > /dev/null
+          then
+            echo "Kubernetes API Server is running"
+          else
+            echo "Kubernetes API Server is NOT running"
+          fi    
+
+      - name: Check kubectl status without network
+        run: |
+          if command -v ./testdata/project-v4/bin/k8s/1.30.0-darwin-arm64/kubectl > /dev/null
+          then
+            echo "kubectl is installed"
+          else
+            echo "kubectl is NOT installed"
+          fi
+
+      - name: Simulate network issues
+        run: sudo tc qdisc add dev lo root netem loss 100%
+
+      - name: Check etcd status without network
+        run: |
+          if pgrep -x "./testdata/project-v4/bin/k8s/1.30.0-darwin-arm64/etcd" > /dev/null
+          then
+            echo "etcd is running"
+          else
+            echo "etcd is NOT running"
+          fi
+
+      - name: Check Kubernetes API Server status without network
+        run: |
+          if pgrep -x "./testdata/project-v4/bin/k8s/1.30.0-darwin-arm64/kube-apiserver" > /dev/null
+          then
+            echo "Kubernetes API Server is running"
+          else
+            echo "Kubernetes API Server is NOT running"
+          fi    
+
+      - name: Check kubectl status without network
+        run: |
+          if command -v ./testdata/project-v4/bin/k8s/1.30.0-darwin-arm64/kubectl > /dev/null
+          then
+            echo "kubectl is installed"
+          else
+            echo "kubectl is NOT installed"
+          fi
+
+      - name: Run make test without network connection
+        run: |
+          cd testdata/project-v4
+          make test
+
+      - name: Remove network simulation
+        run: sudo tc qdisc del dev lo root netem
