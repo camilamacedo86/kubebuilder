@@ -20,3 +20,20 @@ kubebuilder create webhook --group batch --version v1 --kind CronJob --defaultin
 This will scaffold the webhook functions and register your webhook with the manager in your `main.go` for you.
 
 {{#literatego ./testdata/project/internal/webhook/v1/cronjob_webhook.go}}
+
+<aside class="note">
+<H1>Webhooks Changes from Kubebuilder Release 4.3.0</H1>
+
+Note that before release `4.3.0`, webhooks were scaffolded under the directory `/api` and used the methods
+`webhook.Validator` and `webhook.Defaulter`. However, starting from controller-runtime release `v0.20.0`,
+these methods are no longer provided, and users should implement custom interfaces.
+
+Examples can be found under the testdata samples: [testdata/project-v4/internal/webhook/v1](https://github.com/kubernetes-sigs/kubebuilder/tree/master/testdata/project-v4/internal/webhook/v1)
+
+Additionally, webhooks should no longer be placed under the `/api` directory.
+They should be moved to `internal/webhook`.
+
+You can temporarily scaffold using `--legacy=true`, but this flag will
+be removed in future releases.
+
+</aside>
