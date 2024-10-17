@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package certmanagerio
 
 import (
 	"context"
@@ -57,6 +57,6 @@ func (r *CertificateReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func (r *CertificateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&certmanageriov1.Certificate{}).
-		Named("certificate").
+		Named("cert-manager.io-certificate").
 		Complete(r)
 }

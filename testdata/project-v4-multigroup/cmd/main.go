@@ -35,7 +35,9 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	certmanageriov1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 
 	crewv1 "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/api/crew/v1"
 	examplecomv1alpha1 "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/api/example.com/v1alpha1"
@@ -48,12 +50,13 @@ import (
 	shipv1beta1 "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/api/ship/v1beta1"
 	shipv2alpha1 "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/api/ship/v2alpha1"
 	appscontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/apps"
-	certmanagercontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/certmanager"
+	certmanageriocontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/cert-manager.io"
 	crewcontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/crew"
 	examplecomcontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/example.com"
 	fizcontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/fiz"
 	foocontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/foo"
 	foopolicycontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/foo.policy"
+	monitoringcontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/monitoring"
 	seacreaturescontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/sea-creatures"
 	shipcontroller "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/controller/ship"
 	webhookcrewv1 "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/internal/webhook/crew/v1"
@@ -81,7 +84,8 @@ func init() {
 	utilruntime.Must(foopolicyv1.AddToScheme(scheme))
 	utilruntime.Must(foov1.AddToScheme(scheme))
 	utilruntime.Must(fizv1.AddToScheme(scheme))
-	utilruntime.Must(certmanagerv1.AddToScheme(scheme))
+	utilruntime.Must(certmanageriov1.AddToScheme(scheme))
+	utilruntime.Must(monitoringv1.AddToScheme(scheme))
 	utilruntime.Must(examplecomv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
@@ -276,11 +280,18 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Bar")
 		os.Exit(1)
 	}
-	if err = (&certmanagercontroller.CertificateReconciler{
+	if err = (&certmanageriocontroller.CertificateReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Certificate")
+		os.Exit(1)
+	}
+	if err = (&monitoringcontroller.ServiceMonitorReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ServiceMonitor")
 		os.Exit(1)
 	}
 	if err = (&examplecomcontroller.MemcachedReconciler{

@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package certmanager
+package monitoring
 
 import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-var _ = Describe("Certificate Controller", func() {
+var _ = Describe("ServiceMonitor Controller", func() {
 	Context("When reconciling a resource", func() {
 
 		It("should successfully reconcile the resource", func() {

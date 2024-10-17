@@ -1,11 +1,14 @@
 module sigs.k8s.io/kubebuilder/testdata/project-v4
 
-go 1.22.0
+go 1.23
+
+toolchain go1.23.2
 
 require (
 	github.com/cert-manager/cert-manager v1.16.1
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.77.1
 	k8s.io/api v0.31.1
 	k8s.io/apimachinery v0.31.1
 	k8s.io/client-go v0.31.1

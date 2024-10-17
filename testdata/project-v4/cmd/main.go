@@ -35,7 +35,9 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	certmanageriov1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 
 	crewv1 "sigs.k8s.io/kubebuilder/testdata/project-v4/api/v1"
 	"sigs.k8s.io/kubebuilder/testdata/project-v4/internal/controller"
@@ -52,7 +54,8 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(crewv1.AddToScheme(scheme))
-	utilruntime.Must(certmanagerv1.AddToScheme(scheme))
+	utilruntime.Must(certmanageriov1.AddToScheme(scheme))
+	utilruntime.Must(monitoringv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -195,6 +198,13 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Certificate")
+		os.Exit(1)
+	}
+	if err = (&controller.ServiceMonitorReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ServiceMonitor")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

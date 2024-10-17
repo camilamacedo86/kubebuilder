@@ -28,22 +28,22 @@ kubebuilder create api --group <theirgroup> --version <theirversion> --kind <the
 For example, if you're managing Certificates from Cert Manager:
 
 ```shell
-kubebuilder create api --group certmanager --version v1 --kind Certificate --controller=true --resource=false --external-api-path=github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1 --external-api-domain=cert-manager.io
+kubebuilder create api --group cert-manager.io --version v1 --kind Certificate --controller=true --resource=false --external-api-path=github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1 --external-api-domain=""
 ```
 
 See the RBAC markers generated for this:
 
 ```go
-// +kubebuilder:rbac:groups=certmanager.cert-manager.io,resources=certificates,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=certmanager.cert-manager.io,resources=certificates/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=certmanager.cert-manager.io,resources=certificates/finalizers,verbs=update
+// +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cert-manager.io,resources=certificates/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=cert-manager.io,resources=certificates/finalizers,verbs=update
 ```
 
 Also, the RBAC role:
 
 ```ymal
 - apiGroups:
-  - certmanager.cert-manager.io
+  - cert-manager.io
   resources:
   - certificates
   verbs:
@@ -55,7 +55,7 @@ Also, the RBAC role:
   - update
   - watch
 - apiGroups:
-  - certmanager.cert-manager.io
+  - cert-manager.io
   resources:
   - certificates/finalizers
   verbs:
@@ -69,6 +69,21 @@ Also, the RBAC role:
   - patch
   - update
 ```
+
+However, if we are scaffolding an API that has a domain defined, we need to explicitly set the domain using the `--external-api-domain`
+flag in the kubebuilder command. For example, when working with the Prometheus Operator and its `ServiceMonitor` API,
+we would scaffold it as follows:
+
+```shell
+kubebuilder create api --group "monitoring" --version v1 --kind ServiceMonitor --controller=true --resource=false --make=false --external-api-path=github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1 --external-api-domain=coreos.com
+```
+
+In this case:
+
+- The **group** is `"monitoring"`.
+- The **domain** is `"coreos.com"`, as indicated by `--external-api-domain=coreos.com`.
+
+This structure ensures that the API group and domain are correctly applied to generate the markers and scaffolds accordingly.
 
 This scaffolds a controller for the external type but skips creating new resource
 definitions since the type is defined in an external project.
