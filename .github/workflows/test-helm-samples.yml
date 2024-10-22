@@ -1,0 +1,110 @@
+name: Helm Testdata Sample
+
+on:
+  push:
+    paths:
+      - 'testdata/project-v4-with-plugins/**'
+      - 'testdata/project-v4-multigroup/**'
+      - '.github/workflows/test-helm-samples.yml'
+  pull_request:
+    paths:
+      - 'testdata/project-v4-with-plugins/**'
+      - 'testdata/project-v4-multigroup/**'
+      - '.github/workflows/test-helm-samples.yml'
+
+jobs:
+  helm-test-project-v4-with-plugins:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '~1.22'
+
+      - name: Install the latest version of kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Verify kind installation
+        run: kind version
+
+      - name: Create kind cluster
+        run: kind create cluster
+
+      - name: Prepare project-v4-with-plugins
+        run: |
+          cd testdata/project-v4-with-plugins/
+          go mod tidy
+          make docker-build IMG=project-v4-with-plugins:v0.1.0
+          kind load docker-image project-v4-with-plugins:v0.1.0
+
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Verify Helm installation
+        run: helm version
+
+      - name: Lint Helm chart for project-v4-with-plugins
+        run: |
+          helm lint testdata/project-v4-with-plugins/dist/chart
+
+      - name: Install Helm chart for project-v4-with-plugins
+        run: |
+          helm install my-release testdata/project-v4-with-plugins/dist/chart --create-namespace --namespace project-v4-with-plugins-system
+
+  helm-test-project-v4-multigroup:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '~1.22'
+
+      - name: Install the latest version of kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Verify kind installation
+        run: kind version
+
+      - name: Create kind cluster
+        run: kind create cluster
+
+      - name: Prepare project-v4-multigroup
+        run: |
+          cd testdata/project-v4-multigroup/
+          go mod tidy
+          make docker-build IMG=project-v4-multigroup:v0.1.0
+          kind load docker-image project-v4-multigroup:v0.1.0
+
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Verify Helm installation
+        run: helm version
+
+      - name: Lint Helm chart for project-v4-multigroup
+        run: |
+          helm lint testdata/project-v4-multigroup/dist/chart
+
+      - name: Install Helm chart for project-v4-multigroup
+        run: |
+          helm install my-release-multigroup testdata/project-v4-multigroup/dist/chart --create-namespace --namespace project-v4-multigroup-system

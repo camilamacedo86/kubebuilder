@@ -97,7 +97,7 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 
 .PHONY: yamllint
 yamllint:
-	@files=$$(find testdata -name '*.yaml' ! -path 'testdata/*/dist/install.yaml'); \
+	@files=$$(find testdata -name '*.yaml' ! -path 'testdata/*/dist/*'); \
     	docker run --rm $$(tty -s && echo "-it" || echo) -v $(PWD):/data cytopia/yamllint:latest $$files -d "{extends: relaxed, rules: {line-length: {max: 120}}}" --no-warnings
 
 GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
@@ -171,3 +171,12 @@ test-spaces:  ## Run the trailing spaces check
 test-legacy:  ## Run the tests to validate legacy path for webhooks
 	rm -rf  ./testdata/**legacy**/
 	./test/testdata/legacy-webhook-path.sh
+
+.PHONY: install-helm
+install-helm: ## Install the latest version of Helm locally
+	@curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+.PHONY: helm-lint
+helm-lint: install-helm ## Lint the Helm chart in testdata
+	helm lint testdata/project-v4-multigroup/dist/chart
+	helm lint testdata/project-v4-with-plugins/dist/chart

@@ -1,0 +1,24 @@
+{{- if .Values.rbac.create }}
+# permissions for end users to view captains.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  name: crew-captain-viewer-role
+rules:
+- apiGroups:
+  - crew.testproject.org
+  resources:
+  - captains
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - crew.testproject.org
+  resources:
+  - captains/status
+  verbs:
+  - get
+{{- end -}}

@@ -1,0 +1,85 @@
+# Default values for the Kubebuilder Helm chart
+# Controller Manager settings
+controllerManager:
+  image:
+    repository: controller
+    tag: latest
+  replicas: 1
+  args:
+    - "--leader-elect"
+    - "--metrics-bind-address=:8080"
+    - "--health-probe-bind-address=:8081"
+  resources:
+    limits:
+      cpu: 500m
+      memory: 128Mi
+    requests:
+      cpu: 10m
+      memory: 64Mi
+  livenessProbe:
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    httpGet:
+      path: /healthz
+      port: 8081
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    httpGet:
+      path: /readyz
+      port: 8081
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - "ALL"
+  serviceAccountName: project-v4-with-plugins-controller-manager
+  terminationGracePeriodSeconds: 10
+  env:
+    BUSYBOX_IMAGE: busybox:1.36.1
+    MEMCACHED_IMAGE: memcached:1.6.26-alpine3.19
+
+# RBAC settings
+rbac:
+  create: true
+
+# CRDs settings
+crd:
+  create: true
+
+
+# Webhook service settings
+webhook:
+  create: true
+  services:
+    - name: vmemcached-v1alpha1.kb.io
+      type: validating
+      path: /validate-example-com-testproject-org-v1alpha1-memcached
+      failurePolicy: Fail
+      sideEffects: None
+      admissionReviewVersions:
+        - v1
+      rules:
+        - operations:
+            - CREATE
+            - UPDATE
+          apiGroups:
+            - example.com.testproject.org
+          apiVersions:
+            - v1alpha1
+          resources:
+            - memcacheds
+
+
+# Prometheus monitoring settings
+prometheus:
+  create: false
+
+# CertManager settings for certificates
+certmanager:
+  create: false
+
+# Network policies
+networkPolicy:
+  create: false

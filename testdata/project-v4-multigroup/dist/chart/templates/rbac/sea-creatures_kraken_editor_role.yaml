@@ -1,0 +1,28 @@
+{{- if .Values.rbac.create }}
+# permissions for end users to edit krakens.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  name: sea-creatures-kraken-editor-role
+rules:
+- apiGroups:
+  - sea-creatures.testproject.org
+  resources:
+  - krakens
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - sea-creatures.testproject.org
+  resources:
+  - krakens/status
+  verbs:
+  - get
+{{- end -}}

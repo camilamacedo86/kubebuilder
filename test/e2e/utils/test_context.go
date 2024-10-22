@@ -331,3 +331,58 @@ func (t *TestContext) AllowProjectBeMultiGroup() error {
 	}
 	return nil
 }
+
+// InstallHelm installs Helm in the e2e server.
+func (t *TestContext) InstallHelm() error {
+	// You can fetch the latest Helm installation script from its official website
+	helmInstallScript := "https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3"
+
+	// Use curl to fetch the Helm installation script and install Helm
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("curl -fsSL %s | bash", helmInstallScript))
+
+	// Run the command to install Helm
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to install Helm: %s", string(output))
+	}
+
+	// Optionally verify that Helm was installed correctly by running `helm version`
+	verifyCmd := exec.Command("helm", "version")
+	if output, err := verifyCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to verify Helm installation: %s", string(output))
+	}
+
+	return nil
+}
+
+// UninstallHelmRelease removes the specified Helm release from the cluster.
+func (t *TestContext) UninstallHelmRelease() error {
+	ns := fmt.Sprintf("e2e-%s-system", t.TestSuffix)
+	cmd := exec.Command("helm", "uninstall",
+		fmt.Sprintf("release-%s", t.TestSuffix),
+		"--namespace", ns)
+
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to uninstall Helm release: %s", string(output))
+	}
+
+	if _, err := t.Kubectl.Wait(false, "namespace", ns, "--for=delete", "--timeout=2m"); err != nil {
+		return fmt.Errorf("failed to wait for namespace deletion: %s", err)
+	}
+
+	return nil
+}
+
+// EditHelmPlugin is for running `kubebuilder edit --plugins=helm.kubebuilder.io/v1-alpha`
+func (t *TestContext) EditHelmPlugin() error {
+	cmd := exec.Command(t.BinaryName, "edit", "--plugins=helm/v1-alpha")
+	_, err := t.Run(cmd)
+	return err
+}
+
+// HelmInstallRelease is for running install the HelmChart
+func (t *TestContext) HelmInstallRelease() error {
+	cmd := exec.Command("helm", "install", fmt.Sprintf("release-%s", t.TestSuffix), "dist/chart",
+		"--namespace", fmt.Sprintf("e2e-%s-system", t.TestSuffix))
+	_, err := t.Run(cmd)
+	return err
+}

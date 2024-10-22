@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    control-plane: controller-manager
+spec:
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+      control-plane: controller-manager
+  template:
+    metadata:
+      labels:
+        {{- include "chart.labels" . | nindent 8 }}
+        control-plane: controller-manager
+    spec:
+      serviceAccountName: {{ .Values.controllerManager.serviceAccountName }}
+      containers:
+      - name: manager
+        image: {{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}
+        args:
+          {{- range .Values.controllerManager.args }}
+          - {{ . }}
+          {{- end }}
+        {{- if .DeployImages }}
+        env:
+          {{- range $key, $value := .Values.controllerManager.env }}
+          - name: {{ $key }}
+            value: {{ $value }}
+          {{- end }}
+        {{- end }}
+        livenessProbe:
+          {{- toYaml .Values.controllerManager.livenessProbe | nindent 8 }}
+        readinessProbe:
+          {{- toYaml .Values.controllerManager.readinessProbe | nindent 8 }}
+        resources:
+          {{- toYaml .Values.controllerManager.resources | nindent 8 }}
+        securityContext:
+          {{- toYaml .Values.controllerManager.securityContext | nindent 8 }}
+        volumeMounts:
+        - name: webhook-cert
+          mountPath: /tmp/k8s-webhook-server/serving-certs
+          readOnly: true
+      terminationGracePeriodSeconds: {{ .Values.controllerManager.terminationGracePeriodSeconds }}
+      volumes:
+      - name: webhook-cert
+        secret:
+          secretName: webhook-server-cert
