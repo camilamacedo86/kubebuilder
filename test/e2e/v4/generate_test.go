@@ -71,10 +71,9 @@ func GenerateV4(kbc *utils.TestContext) {
 		monitorTlsPatch, "#")).To(Succeed())
 	ExpectWithOffset(1, pluginutil.UncommentCode(
 		filepath.Join(kbc.Dir, "config", "default", "kustomization.yaml"),
-		`#- path: certmanager_metrics_manager_patch.yaml`, "#")).To(Succeed())
-	ExpectWithOffset(1, pluginutil.UncommentCode(
-		filepath.Join(kbc.Dir, "cmd", "main.go"),
-		tlsConfigManager, "// ")).To(Succeed())
+		`#- path: cert_metrics_manager_patch.yaml
+#  target:
+#    kind: Deployment`, "#")).To(Succeed())
 
 	uncommentKustomizeCoversion(kbc)
 
