@@ -486,6 +486,10 @@ func getMetricsOutput(kbc *utils.TestContext) string {
 		Expect(err).NotTo(HaveOccurred(), "Failed to check clusterrolebinding existence")
 	}
 
+	token, err := serviceAccountToken(kbc)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(token).NotTo(BeEmpty())
+
 	var metricsOutput string
 	By("validating that the controller-manager service is available")
 	_, err = kbc.Kubectl.Get(
@@ -508,15 +512,18 @@ func getMetricsOutput(kbc *utils.TestContext) string {
 	Eventually(checkServiceEndpoint, 2*time.Minute, time.Second).Should(Succeed(),
 		"Service endpoint should be ready")
 
-	By("waiting briefly to ensure controller is listening on port 8443")
+	// NOTE: On Kubernetes 1.33+, we've observed a delay before the metrics endpoint becomes available
+	// when using controller-runtime's WithAuthenticationAndAuthorization() with self-signed certificates.
+	// This delay appears to stem from Kubernetes itself, potentially due to changes in how it initializes
+	// service account tokens or handles TLS/service readiness.
+	//
+	// Without this delay, tests that curl the /metrics endpoint using a token can fail from k8s 1.33+.
+	// As a temporary workaround, we wait briefly before attempting to access metrics.
+	By("waiting briefly to ensure that the certs are provisioned and metrics are available")
 	time.Sleep(15 * time.Second)
 
-	token, err := serviceAccountToken(kbc)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(token).NotTo(BeEmpty())
-	podName := fmt.Sprintf("curl-%s", kbc.TestSuffix)
 	By("creating a curl pod to access the metrics endpoint")
-	cmdOpts := cmdOptsToCreateCurlPod(kbc, token, podName)
+	cmdOpts := cmdOptsToCreateCurlPod(kbc, token)
 	_, err = kbc.Kubectl.CommandInNamespace(cmdOpts...)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -525,7 +532,7 @@ func getMetricsOutput(kbc *utils.TestContext) string {
 		var status string
 		status, err = kbc.Kubectl.Get(
 			true,
-			"pods", podName, "-o", "jsonpath={.status.phase}")
+			"pods", "curl", "-o", "jsonpath={.status.phase}")
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(status).To(Equal("Succeeded"), fmt.Sprintf("curl pod in %s status", status))
 	}
@@ -543,12 +550,12 @@ func getMetricsOutput(kbc *utils.TestContext) string {
 
 	By("validating that the metrics endpoint is serving as expected")
 	getCurlLogs := func(g Gomega) {
-		metricsOutput, err = kbc.Kubectl.Logs(podName)
+		metricsOutput, err = kbc.Kubectl.Logs("curl")
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(metricsOutput).Should(ContainSubstring("< HTTP/1.1 200 OK"))
 	}
 	Eventually(getCurlLogs, 10*time.Second, time.Second).Should(Succeed())
-	removeCurlPod(kbc, podName)
+	removeCurlPod(kbc)
 	return metricsOutput
 }
 
@@ -562,10 +569,9 @@ func metricsShouldBeUnavailable(kbc *utils.TestContext) {
 	token, err := serviceAccountToken(kbc)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(token).NotTo(BeEmpty())
-	podName := fmt.Sprintf("curl-%s", kbc.TestSuffix)
 
 	By("creating a curl pod to access the metrics endpoint")
-	cmdOpts := cmdOptsToCreateCurlPod(kbc, token, podName)
+	cmdOpts := cmdOptsToCreateCurlPod(kbc, token)
 	_, err = kbc.Kubectl.CommandInNamespace(cmdOpts...)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -573,7 +579,7 @@ func metricsShouldBeUnavailable(kbc *utils.TestContext) {
 	verifyCurlUp := func(g Gomega) {
 		status, errCurl := kbc.Kubectl.Get(
 			true,
-			"pods", podName, "-o", "jsonpath={.status.phase}")
+			"pods", "curl", "-o", "jsonpath={.status.phase}")
 		g.Expect(errCurl).NotTo(HaveOccurred())
 		g.Expect(status).NotTo(Equal("Failed"),
 			fmt.Sprintf("curl pod in %s status when should fail with an error", status))
@@ -582,18 +588,18 @@ func metricsShouldBeUnavailable(kbc *utils.TestContext) {
 
 	By("validating that the metrics endpoint is not working as expected")
 	getCurlLogs := func(g Gomega) {
-		metricsOutput, err := kbc.Kubectl.Logs(podName)
+		metricsOutput, err := kbc.Kubectl.Logs("curl")
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(metricsOutput).Should(ContainSubstring("Could not resolve host"))
 	}
 	Eventually(getCurlLogs, 10*time.Second, time.Second).Should(Succeed())
-	removeCurlPod(kbc, podName)
+	removeCurlPod(kbc)
 }
 
-func cmdOptsToCreateCurlPod(kbc *utils.TestContext, token, podName string) []string {
+func cmdOptsToCreateCurlPod(kbc *utils.TestContext, token string) []string {
 	//nolint:lll
 	cmdOpts := []string{
-		"run", podName,
+		"run", "curl",
 		"--restart=Never",
 		"--namespace", kbc.Kubectl.Namespace,
 		"--image=curlimages/curl:latest",
@@ -625,9 +631,9 @@ func cmdOptsToCreateCurlPod(kbc *utils.TestContext, token, podName string) []str
 	return cmdOpts
 }
 
-func removeCurlPod(kbc *utils.TestContext, podName string) {
+func removeCurlPod(kbc *utils.TestContext) {
 	By("cleaning up the curl pod")
-	_, err := kbc.Kubectl.Delete(true, fmt.Sprintf("pods/%s", podName), "--grace-period=0", "--force")
+	_, err := kbc.Kubectl.Delete(true, "pods/curl", "--grace-period=0", "--force")
 	Expect(err).NotTo(HaveOccurred())
 }
 
