@@ -34,10 +34,14 @@ var (
 
 // Plugin implements the plugin.Full interface
 type Plugin struct {
+	initSubcommand
 	editSubcommand
 }
 
-var _ plugin.Edit = Plugin{}
+var (
+	_ plugin.Init = Plugin{}
+	_ plugin.Edit = Plugin{}
+)
 
 type pluginConfig struct{}
 
@@ -50,10 +54,12 @@ func (Plugin) Version() plugin.Version { return pluginVersion }
 // SupportedProjectVersions returns an array with all project versions supported by the plugin
 func (Plugin) SupportedProjectVersions() []config.Version { return supportedProjectVersions }
 
+// GetInitSubcommand will return the subcommand which is responsible for initializing and scaffolding helm manifests
+func (p Plugin) GetInitSubcommand() plugin.InitSubcommand { return &p.initSubcommand }
+
 // GetEditSubcommand will return the subcommand which is responsible for adding and/or edit a helm chart
 func (p Plugin) GetEditSubcommand() plugin.EditSubcommand { return &p.editSubcommand }
 
-// DeprecationWarning define the deprecation message or return empty when plugin is not deprecated
 func (p Plugin) DeprecationWarning() string {
 	return ""
 }

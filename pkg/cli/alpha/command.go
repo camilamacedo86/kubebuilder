@@ -36,43 +36,28 @@ import (
 // code of external projects is not feasible within Kubebuilder’s current design.
 func NewScaffoldCommand() *cobra.Command {
 	opts := internal.Generate{}
-
 	scaffoldCmd := &cobra.Command{
 		Use:   "generate",
-		Short: "Re-scaffold a Kubebuilder project from its PROJECT file",
-		Long: `The 'generate' command re-creates a Kubebuilder project scaffold based on the configuration 
-defined in the PROJECT file, using the latest installed Kubebuilder version and plugins.
-
-This is helpful for migrating projects to a newer Kubebuilder layout or plugin version (e.g., v3 to v4)
-as update your project from any previous version to the current one.
-
-If no output directory is provided, the current working directory will be cleaned (except .git and PROJECT).`,
-		Example: `
-  # **WARNING**(will delete all files to allow the re-scaffold except .git and PROJECT)
-  # Re-scaffold the project in-place 
-  kubebuilder alpha generate
-
-  # Re-scaffold the project from ./test into ./my-output
-  kubebuilder alpha generate --input-dir="./path/to/project" --output-dir="./my-output"
-`,
+		Short: "Re-scaffold an existing Kuberbuilder project",
+		Long: `It's an experimental feature that has the purpose of re-scaffolding the whole project from the scratch 
+using the current version of KubeBuilder binary available.
+# make sure the PROJECT file is in the 'input-dir' argument, the default is the current directory.
+$ kubebuilder alpha generate --input-dir="./test" --output-dir="./my-output"
+Then we will re-scaffold the project by Kubebuilder in the directory specified by 'output-dir'.
+		`,
 		PreRunE: func(_ *cobra.Command, _ []string) error {
 			return opts.Validate()
 		},
 		Run: func(_ *cobra.Command, _ []string) {
 			if err := opts.Generate(); err != nil {
-				log.Fatalf("failed to generate project: %s", err)
+				log.Fatalf("Failed to command %s", err)
 			}
 		},
 	}
-
 	scaffoldCmd.Flags().StringVar(&opts.InputDir, "input-dir", "",
-		"Path to the directory containing the PROJECT file. "+
-			"Defaults to the current working directory. WARNING: delete existing files (except .git and PROJECT).")
-
+		"path to a Kubebuilder project file if not in the current working directory")
 	scaffoldCmd.Flags().StringVar(&opts.OutputDir, "output-dir", "",
-		"Directory where the new project scaffold will be written. "+
-			"If unset, re-scaffolding occurs in-place "+
-			"and will delete existing files (except .git and PROJECT).")
+		"path to output the scaffolding. defaults a directory in the current working directory")
 
 	return scaffoldCmd
 }

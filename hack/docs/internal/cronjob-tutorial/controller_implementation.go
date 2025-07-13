@@ -16,7 +16,7 @@ limitations under the License.
 
 package cronjob
 
-const controllerIntro = `
+const ControllerIntro = `
 // +kubebuilder:docs-gen:collapse=Apache License
 
 /*
@@ -24,7 +24,7 @@ We'll start out with some imports.  You'll see below that we'll need a few more 
 than those scaffolded for us.  We'll talk about each one when we use it.
 */`
 
-const controllerImport = `import (
+const ControllerImport = `import (
 	"context"
 	"fmt"
 	"sort"
@@ -38,7 +38,7 @@ const controllerImport = `import (
 	ref "k8s.io/client-go/tools/reference"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	batchv1 "tutorial.kubebuilder.io/project/api/v1"
 )
@@ -48,14 +48,14 @@ Next, we'll need a Clock, which will allow us to fake timing in our tests.
 */
 `
 
-const controllerMockClock = `
+const ControllerMockClock = `
 /*
 We'll mock out the clock to make it easier to jump around in time while testing,
 the "real" clock just calls` + " `" + `time.Now` + "`" + `.
 */
 type realClock struct{}
 
-func (_ realClock) Now() time.Time { return time.Now() } //nolint:staticcheck
+func (_ realClock) Now() time.Time { return time.Now() }
 
 // Clock knows how to get the current time.
 // It can be used to fake out timing for testing.
@@ -72,7 +72,7 @@ a couple more [markers](/reference/markers/rbac.md).
 */
 `
 
-const controllerReconcile = `
+const ControllerReconcile = `
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs/status,verbs=get
 
@@ -84,10 +84,7 @@ var (
 )
 `
 
-const skipGoCycloLint = `
-// nolint:gocyclo`
-
-const controllerReconcileLogic = `log := logf.FromContext(ctx)
+const ControllerReconcileLogic = `log := log.FromContext(ctx)
 
 	/*
 		### 1: Load the CronJob by name
@@ -333,7 +330,7 @@ const controllerReconcileLogic = `log := logf.FromContext(ctx)
 	getNextSchedule := func(cronJob *batchv1.CronJob, now time.Time) (lastMissed time.Time, next time.Time, err error) {
 		sched, err := cron.ParseStandard(cronJob.Spec.Schedule)
 		if err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("unparseable schedule %q: %w", cronJob.Spec.Schedule, err)
+			return time.Time{}, time.Time{}, fmt.Errorf("Unparseable schedule %q: %v", cronJob.Spec.Schedule, err)
 		}
 
 		// for optimization purposes, cheat a bit and start from our last observed run time
@@ -343,7 +340,7 @@ const controllerReconcileLogic = `log := logf.FromContext(ctx)
 		if cronJob.Status.LastScheduleTime != nil {
 			earliestTime = cronJob.Status.LastScheduleTime.Time
 		} else {
-			earliestTime = cronJob.CreationTimestamp.Time
+			earliestTime = cronJob.ObjectMeta.CreationTimestamp.Time
 		}
 		if cronJob.Spec.StartingDeadlineSeconds != nil {
 			// controller is not going to schedule anything below this point
@@ -377,7 +374,7 @@ const controllerReconcileLogic = `log := logf.FromContext(ctx)
 			starts++
 			if starts > 100 {
 				// We can't get the most recent times so just return an empty slice
-				return time.Time{}, time.Time{}, fmt.Errorf("Too many missed start times (> 100). Set or decrease .spec.startingDeadlineSeconds or check clock skew.") //nolint:staticcheck
+				return time.Time{}, time.Time{}, fmt.Errorf("Too many missed start times (> 100). Set or decrease .spec.startingDeadlineSeconds or check clock skew.")
 			}
 		}
 		return lastMissed, sched.Next(now), nil
@@ -536,8 +533,7 @@ var (
 	apiGVStr    = batchv1.GroupVersion.String()
 )
 `
-
-const controllerSetupWithManager = `
+const ControllerSetupWithManager = `
 	// set up a real clock, since we're not in a test
 	if r.Clock == nil {
 		r.Clock = realClock{}

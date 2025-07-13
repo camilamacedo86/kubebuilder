@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: healthcheckpolicies.foo.policy.testproject.org
 spec:
   group: foo.policy.testproject.org
@@ -17,7 +17,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: HealthCheckPolicy is the Schema for the healthcheckpolicies API
+        description: HealthCheckPolicy is the Schema for the healthcheckpolicies API.
         properties:
           apiVersion:
             description: |-
@@ -37,18 +37,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of HealthCheckPolicy
+            description: HealthCheckPolicySpec defines the desired state of HealthCheckPolicy.
             properties:
               foo:
-                description: foo is an example field of HealthCheckPolicy. Edit healthcheckpolicy_types.go
+                description: Foo is an example field of HealthCheckPolicy. Edit healthcheckpolicy_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of HealthCheckPolicy
+            description: HealthCheckPolicyStatus defines the observed state of HealthCheckPolicy.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true

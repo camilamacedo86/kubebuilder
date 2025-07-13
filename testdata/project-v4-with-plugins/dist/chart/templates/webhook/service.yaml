@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: project-v4-with-plugins-webhook-service
+  name: {{ include "chart.name" . }}-webhook-service
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "chart.labels" . | nindent 4 }}

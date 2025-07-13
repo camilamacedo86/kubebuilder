@@ -17,8 +17,6 @@ limitations under the License.
 package scaffolds
 
 import (
-	"fmt"
-
 	log "github.com/sirupsen/logrus"
 
 	"sigs.k8s.io/kubebuilder/v4/pkg/machinery"
@@ -50,14 +48,10 @@ func (s *initScaffolder) Scaffold() error {
 	// Initialize the machinery.Scaffold that will write the files to disk
 	scaffold := machinery.NewScaffold(s.fs)
 
-	err := scaffold.Execute(
+	return scaffold.Execute(
 		&templates.RuntimeManifest{},
 		&templates.ResourcesManifest{},
-		&templates.CustomMetricsConfigManifest{ConfigPath: configFilePath},
+		&templates.CustomMetricsConfigManifest{ConfigPath: string(configFilePath)},
 	)
-	if err != nil {
-		return fmt.Errorf("error scaffolding Grafana memanifests: %w", err)
-	}
 
-	return nil
 }

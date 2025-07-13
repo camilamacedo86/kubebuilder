@@ -31,7 +31,7 @@ type EnableCAInjectionPatch struct {
 	machinery.ResourceMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *EnableCAInjectionPatch) SetTemplateDefaults() error {
 	if f.Path == "" {
 		if f.MultiGroup && f.Resource.Group != "" {
@@ -47,6 +47,7 @@ func (f *EnableCAInjectionPatch) SetTemplateDefaults() error {
 	return nil
 }
 
+//nolint:lll
 const enableCAInjectionPatchTemplate = `# The following patch adds a directive for certmanager to inject CA into the CRD
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition

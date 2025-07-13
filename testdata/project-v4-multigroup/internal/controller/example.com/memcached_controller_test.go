@@ -21,15 +21,14 @@ import (
 	"os"
 	"time"
 
+	//nolint:golint
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	examplecomv1alpha1 "sigs.k8s.io/kubebuilder/testdata/project-v4-multigroup/api/example.com/v1alpha1"
@@ -72,13 +71,13 @@ var _ = Describe("Memcached controller", func() {
 			if err != nil && errors.IsNotFound(err) {
 				// Let's mock our custom resource at the same way that we would
 				// apply on the cluster the manifest under config/samples
-				memcached = &examplecomv1alpha1.Memcached{
+				memcached := &examplecomv1alpha1.Memcached{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      MemcachedName,
 						Namespace: namespace.Name,
 					},
 					Spec: examplecomv1alpha1.MemcachedSpec{
-						Size:          ptr.To(int32(1)),
+						Size:          1,
 						ContainerPort: 11211,
 					},
 				}
@@ -140,7 +139,7 @@ var _ = Describe("Memcached controller", func() {
 
 			By("Checking the latest Status Condition added to the Memcached instance")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, memcached)).To(Succeed())
-			var conditions []metav1.Condition
+			conditions := []metav1.Condition{}
 			Expect(memcached.Status.Conditions).To(ContainElement(
 				HaveField("Type", Equal(typeAvailableMemcached)), &conditions))
 			Expect(conditions).To(HaveLen(1), "Multiple conditions of type %s", typeAvailableMemcached)

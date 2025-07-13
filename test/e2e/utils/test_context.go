@@ -27,12 +27,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugin/util"
 
-	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
 )
 
 const (
-	certmanagerVersion        = "v1.16.3"
+	certmanagerVersion        = "v1.16.0"
 	certmanagerURLTmpl        = "https://github.com/cert-manager/cert-manager/releases/download/%s/cert-manager.yaml"
 	prometheusOperatorVersion = "v0.77.1"
 	prometheusOperatorURL     = "https://github.com/prometheus-operator/prometheus-operator/" +
@@ -60,7 +59,7 @@ type TestContext struct {
 func NewTestContext(binaryName string, env ...string) (*TestContext, error) {
 	testSuffix, err := util.RandomSuffix()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate random suffix: %w", err)
+		return nil, err
 	}
 
 	cc := &CmdContext{
@@ -73,28 +72,14 @@ func NewTestContext(binaryName string, env ...string) (*TestContext, error) {
 		ServiceAccount: fmt.Sprintf("e2e-%s-controller-manager", testSuffix),
 		CmdContext:     cc,
 	}
-	var k8sVersion *KubernetesVersion
-	v, err := kubectl.Version()
+	k8sVersion, err := kubectl.Version()
 	if err != nil {
-		_, _ = fmt.Fprintf(GinkgoWriter, "warning: failed to get kubernetes version: %v\n", err)
-		k8sVersion = &KubernetesVersion{
-			ClientVersion: VersionInfo{
-				Major:      "1",
-				Minor:      "0",
-				GitVersion: "v1.0.0-fake",
-			},
-			ServerVersion: VersionInfo{
-				Major:      "1",
-				Minor:      "0",
-				GitVersion: "v1.0.0-fake",
-			},
-		}
-	} else {
-		k8sVersion = &v
+		return nil, err
 	}
+
 	// Set CmdContext.Dir after running Kubectl.Version() because dir does not exist yet.
 	if cc.Dir, err = filepath.Abs("e2e-" + testSuffix); err != nil {
-		return nil, fmt.Errorf("failed to determine absolute path to %q: %w", "e2e-"+testSuffix, err)
+		return nil, err
 	}
 
 	return &TestContext{
@@ -107,7 +92,7 @@ func NewTestContext(binaryName string, env ...string) (*TestContext, error) {
 		ImageName:  "e2e-test/controller-manager:" + testSuffix,
 		CmdContext: cc,
 		Kubectl:    kubectl,
-		K8sVersion: k8sVersion,
+		K8sVersion: &k8sVersion,
 		BinaryName: binaryName,
 	}, nil
 }
@@ -123,17 +108,13 @@ func (t *TestContext) Prepare() error {
 	for _, toolName := range []string{"controller-gen", "kustomize"} {
 		if toolPath, err := exec.LookPath(toolName); err == nil {
 			if err := os.RemoveAll(toolPath); err != nil {
-				return fmt.Errorf("failed to remove %q: %w", toolName, err)
+				return err
 			}
 		}
 	}
 
 	_, _ = fmt.Fprintf(GinkgoWriter, "preparing testing directory: %s\n", t.Dir)
-	if err := os.MkdirAll(t.Dir, 0o755); err != nil {
-		return fmt.Errorf("error creating test directory %q: %w", t.Dir, err)
-	}
-
-	return nil
+	return os.MkdirAll(t.Dir, 0o755)
 }
 
 // makeCertManagerURL returns a kubectl-able URL for the cert-manager bundle.
@@ -258,6 +239,7 @@ func (t *TestContext) Destroy() {
 				warnError(err)
 			}
 		}
+
 	}
 	if err := os.RemoveAll(t.Dir); err != nil {
 		warnError(err)
@@ -270,18 +252,18 @@ func (t *TestContext) CreateManagerNamespace() error {
 	return err
 }
 
-// LabelNamespacesToEnforceRestricted will label specified namespaces so that we can verify
-// if the manifests can be applied in restricted environments with strict security policy enforced
-func (t *TestContext) LabelNamespacesToEnforceRestricted() error {
+// LabelNamespacesToWarnAboutRestricted will label all namespaces so that we can verify
+// if a warning with `Warning: would violate PodSecurity` will be raised when the manifests are applied
+func (t *TestContext) LabelNamespacesToWarnAboutRestricted() error {
 	_, err := t.Kubectl.Command("label", "--overwrite", "ns", t.Kubectl.Namespace,
-		"pod-security.kubernetes.io/enforce=restricted")
+		"pod-security.kubernetes.io/warn=restricted")
 	return err
 }
 
-// RemoveNamespaceLabelToEnforceRestricted will remove the `pod-security.kubernetes.io/enforce` label
+// RemoveNamespaceLabelToWarnAboutRestricted will remove the `pod-security.kubernetes.io/warn` label
 // from the specified namespace
-func (t *TestContext) RemoveNamespaceLabelToEnforceRestricted() error {
-	_, err := t.Kubectl.Command("label", "ns", t.Kubectl.Namespace, "pod-security.kubernetes.io/enforce-")
+func (t *TestContext) RemoveNamespaceLabelToWarnAboutRestricted() error {
+	_, err := t.Kubectl.Command("label", "ns", t.Kubectl.Namespace, "pod-security.kubernetes.io/warn-")
 	return err
 }
 
@@ -326,7 +308,7 @@ func (cc *CmdContext) Run(cmd *exec.Cmd) ([]byte, error) {
 	_, _ = fmt.Fprintf(GinkgoWriter, "running: %s\n", command)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return output, fmt.Errorf("%q failed with error %q: %w", command, string(output), err)
+		return output, fmt.Errorf("%s failed with error: (%v) %s", command, err, string(output))
 	}
 
 	return output, nil
@@ -339,13 +321,13 @@ func (t *TestContext) AllowProjectBeMultiGroup() error {
 `
 	projectBytes, err := os.ReadFile(filepath.Join(t.Dir, "PROJECT"))
 	if err != nil {
-		return fmt.Errorf("cannot read project file: %w", err)
+		return err
 	}
 
 	projectBytes = append([]byte(multiGroup), projectBytes...)
 	err = os.WriteFile(filepath.Join(t.Dir, "PROJECT"), projectBytes, 0o644)
 	if err != nil {
-		return fmt.Errorf("could not write to project file: %w", err)
+		return err
 	}
 	return nil
 }
@@ -379,6 +361,11 @@ func (t *TestContext) UninstallHelmRelease() error {
 	if err != nil {
 		return err
 	}
+
+	if _, err := t.Kubectl.Wait(false, "namespace", ns, "--for=delete", "--timeout=2m"); err != nil {
+		log.Printf("failed to wait for namespace deletion: %s", err)
+	}
+
 	return nil
 }
 

@@ -4,14 +4,13 @@ kind: RoleBinding
 metadata:
   labels:
     {{- include "chart.labels" . | nindent 4 }}
-  namespace: {{ .Release.Namespace }}
-  name: project-v4-with-plugins-leader-election-rolebinding
+  name: leader-election-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: project-v4-with-plugins-leader-election-role
+  name: leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: {{ .Values.controllerManager.serviceAccountName }}
+  name: project-v4-with-plugins-controller-manager
   namespace: {{ .Release.Namespace }}
 {{- end -}}

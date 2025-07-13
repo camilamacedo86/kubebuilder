@@ -62,20 +62,21 @@ import (
  the fields.
 */
 
-// CronJobSpec defines the desired state of CronJob
+// CronJobSpec defines the desired state of CronJob.
 type CronJobSpec struct {
-	// schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	// +kubebuilder:validation:MinLength=0
-	// +required
+
+	// The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule string `json:"schedule"`
 
-	// startingDeadlineSeconds defines in seconds for starting the job if it misses scheduled
+	// +kubebuilder:validation:Minimum=0
+
+	// Optional deadline in seconds for starting the job if it misses scheduled
 	// time for any reason.  Missed jobs executions will be counted as failed ones.
 	// +optional
-	// +kubebuilder:validation:Minimum=0
 	StartingDeadlineSeconds *int64 `json:"startingDeadlineSeconds,omitempty"`
 
-	// concurrencyPolicy specifies how to treat concurrent executions of a Job.
+	// Specifies how to treat concurrent executions of a Job.
 	// Valid values are:
 	// - "Allow" (default): allows CronJobs to run concurrently;
 	// - "Forbid": forbids concurrent runs, skipping next run if previous run hasn't finished yet;
@@ -83,24 +84,26 @@ type CronJobSpec struct {
 	// +optional
 	ConcurrencyPolicy ConcurrencyPolicy `json:"concurrencyPolicy,omitempty"`
 
-	// suspend tells the controller to suspend subsequent executions, it does
+	// This flag tells the controller to suspend subsequent executions, it does
 	// not apply to already started executions.  Defaults to false.
 	// +optional
 	Suspend *bool `json:"suspend,omitempty"`
 
-	// jobTemplate defines the job that will be created when executing a CronJob.
+	// Specifies the job that will be created when executing a CronJob.
 	JobTemplate batchv1.JobTemplateSpec `json:"jobTemplate"`
 
-	// successfulJobsHistoryLimit defines the number of successful finished jobs to retain.
+	// +kubebuilder:validation:Minimum=0
+
+	// The number of successful finished jobs to retain.
 	// This is a pointer to distinguish between explicit zero and not specified.
 	// +optional
-	// +kubebuilder:validation:Minimum=0
 	SuccessfulJobsHistoryLimit *int32 `json:"successfulJobsHistoryLimit,omitempty"`
 
-	// failedJobsHistoryLimit defines the number of failed finished jobs to retain.
+	// +kubebuilder:validation:Minimum=0
+
+	// The number of failed finished jobs to retain.
 	// This is a pointer to distinguish between explicit zero and not specified.
 	// +optional
-	// +kubebuilder:validation:Minimum=0
 	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
 }
 
@@ -144,11 +147,11 @@ type CronJobStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// active defines a list of pointers to currently running jobs.
+	// A list of pointers to currently running jobs.
 	// +optional
 	Active []corev1.ObjectReference `json:"active,omitempty"`
 
-	// lastScheduleTime defines when was the last time the job was successfully scheduled.
+	// Information when was the last time the job was successfully scheduled.
 	// +optional
 	LastScheduleTime *metav1.Time `json:"lastScheduleTime,omitempty"`
 }
@@ -162,28 +165,20 @@ type CronJobStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// CronJob is the Schema for the cronjobs API
+// CronJob is the Schema for the cronjobs API.
 type CronJob struct {
 	/*
 	 */
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// metadata is a standard object metadata
-	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty,omitzero"`
-
-	// spec defines the desired state of CronJob
-	// +required
-	Spec CronJobSpec `json:"spec"`
-
-	// status defines the observed state of CronJob
-	// +optional
-	Status CronJobStatus `json:"status,omitempty,omitzero"`
+	Spec   CronJobSpec   `json:"spec,omitempty"`
+	Status CronJobStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// CronJobList contains a list of CronJob
+// CronJobList contains a list of CronJob.
 type CronJobList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

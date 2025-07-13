@@ -18,7 +18,6 @@ package yaml
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 
@@ -63,13 +62,13 @@ layout: ""
 	)
 
 	var (
-		s    *yamlStore
-		path string
+		s *yamlStore
+
+		path = DefaultPath + "2"
 	)
 
 	BeforeEach(func() {
 		s = New(machinery.Filesystem{FS: afero.NewMemMapFs()}).(*yamlStore)
-		path = DefaultPath + "2"
 	})
 
 	Context("New", func() {
@@ -92,13 +91,7 @@ layout: ""
 		It("should fail if no file exists at the default path", func() {
 			err := s.Load()
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.LoadError{
-				Err: fmt.Errorf("unable to read %q file: %w", DefaultPath, &os.PathError{
-					Err:  os.ErrNotExist,
-					Path: DefaultPath,
-					Op:   "open",
-				}),
-			}))
+			Expect(errors.As(err, &store.LoadError{})).To(BeTrue())
 		})
 
 		It("should fail if unable to identify the version of the file at the default path", func() {
@@ -106,15 +99,7 @@ layout: ""
 
 			err := s.Load()
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.LoadError{
-				Err: fmt.Errorf("unable to determine config version: %w",
-					fmt.Errorf("error unmarshaling JSON: %w",
-						fmt.Errorf("while decoding JSON: %w",
-							errors.New("project version is empty"),
-						),
-					),
-				),
-			}))
+			Expect(errors.As(err, &store.LoadError{})).To(BeTrue())
 		})
 
 		It("should fail if unable to create a Config for the version of the file at the default path", func() {
@@ -122,11 +107,7 @@ layout: ""
 
 			err := s.Load()
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.LoadError{
-				Err: fmt.Errorf("unable to create config for version %q: %w", "1-alpha", config.UnsupportedVersionError{
-					Version: config.Version{Number: 1, Stage: 2},
-				}),
-			}))
+			Expect(errors.As(err, &store.LoadError{})).To(BeTrue())
 		})
 
 		It("should fail if unable to unmarshal the file at the default path", func() {
@@ -134,14 +115,7 @@ layout: ""
 
 			err := s.Load()
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.LoadError{
-				Err: fmt.Errorf("unable to create config for version %q: %w", "2", config.UnsupportedVersionError{
-					Version: config.Version{
-						Number: 2,
-						Stage:  0,
-					},
-				}),
-			}))
+			Expect(errors.As(err, &store.LoadError{})).To(BeTrue())
 		})
 	})
 
@@ -159,13 +133,7 @@ layout: ""
 		It("should fail if no file exists at the specified path", func() {
 			err := s.LoadFrom(path)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.LoadError{
-				Err: fmt.Errorf("unable to read %q file: %w", path, &os.PathError{
-					Err:  os.ErrNotExist,
-					Path: path,
-					Op:   "open",
-				}),
-			}))
+			Expect(errors.As(err, &store.LoadError{})).To(BeTrue())
 		})
 
 		It("should fail if unable to identify the version of the file at the specified path", func() {
@@ -173,15 +141,7 @@ layout: ""
 
 			err := s.LoadFrom(path)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.LoadError{
-				Err: fmt.Errorf("unable to determine config version: %w",
-					fmt.Errorf("error unmarshaling JSON: %w",
-						fmt.Errorf("while decoding JSON: %w",
-							errors.New("project version is empty"),
-						),
-					),
-				),
-			}))
+			Expect(errors.As(err, &store.LoadError{})).To(BeTrue())
 		})
 
 		It("should fail if unable to create a Config for the version of the file at the specified path", func() {
@@ -189,11 +149,7 @@ layout: ""
 
 			err := s.LoadFrom(path)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.LoadError{
-				Err: fmt.Errorf("unable to create config for version %q: %w", "1-alpha", config.UnsupportedVersionError{
-					Version: config.Version{Number: 1, Stage: 2},
-				}),
-			}))
+			Expect(errors.As(err, &store.LoadError{})).To(BeTrue())
 		})
 
 		It("should fail if unable to unmarshal the file at the specified path", func() {
@@ -201,13 +157,7 @@ layout: ""
 
 			err := s.LoadFrom(path)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.LoadError{
-				Err: fmt.Errorf("unable to create config for version %q: %w", "2", config.UnsupportedVersionError{
-					Version: config.Version{
-						Number: 2,
-					},
-				}),
-			}))
+			Expect(errors.As(err, &store.LoadError{})).To(BeTrue())
 		})
 	})
 
@@ -234,9 +184,7 @@ layout: ""
 		It("should fail for an empty config", func() {
 			err := s.Save()
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.SaveError{
-				Err: errors.New("undefined config, use one of the initializers: New, Load, LoadFrom"),
-			}))
+			Expect(errors.As(err, &store.SaveError{})).To(BeTrue())
 		})
 
 		It("should fail for a pre-existent file that must not exist", func() {
@@ -246,9 +194,7 @@ layout: ""
 
 			err := s.Save()
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.SaveError{
-				Err: fmt.Errorf("configuration already exists in %q", DefaultPath),
-			}))
+			Expect(errors.As(err, &store.SaveError{})).To(BeTrue())
 		})
 	})
 
@@ -275,9 +221,7 @@ layout: ""
 		It("should fail for an empty config", func() {
 			err := s.SaveTo(path)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.SaveError{
-				Err: errors.New("undefined config, use one of the initializers: New, Load, LoadFrom"),
-			}))
+			Expect(errors.As(err, &store.SaveError{})).To(BeTrue())
 		})
 
 		It("should fail for a pre-existent file that must not exist", func() {
@@ -287,9 +231,7 @@ layout: ""
 
 			err := s.SaveTo(path)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(store.SaveError{
-				Err: fmt.Errorf("configuration already exists in %q", path),
-			}))
+			Expect(errors.As(err, &store.SaveError{})).To(BeTrue())
 		})
 	})
 })

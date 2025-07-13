@@ -38,7 +38,9 @@ type Plugin struct {
 	editSubcommand
 }
 
-var _ plugin.Init = Plugin{}
+var (
+	_ plugin.Init = Plugin{}
+)
 
 // Name returns the name of the plugin
 func (Plugin) Name() string { return pluginName }
@@ -57,7 +59,6 @@ func (p Plugin) GetEditSubcommand() plugin.EditSubcommand { return &p.editSubcom
 
 type pluginConfig struct{}
 
-// DeprecationWarning define the deprecation message or return empty when plugin is not deprecated
 func (p Plugin) DeprecationWarning() string {
 	return ""
 }

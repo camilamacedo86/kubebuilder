@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package networkpolicy
+package network_policy
 
 import (
 	"path/filepath"
@@ -29,7 +29,7 @@ type Kustomization struct {
 	machinery.TemplateMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *Kustomization) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join("config", "network-policy", "kustomization.yaml")

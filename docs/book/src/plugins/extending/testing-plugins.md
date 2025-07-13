@@ -55,7 +55,7 @@ Here’s a general workflow to create a sample project using the `go/v4` plugin 
   	"--domain", kbc.Domain,
   	"--fetch-deps=false",
   )
-  Expect(err).NotTo(HaveOccurred(), "Failed to initialize a project")
+  ExpectWithOffset(1, err).NotTo(HaveOccurred())
   ```
 
 - **To define API:**
@@ -70,7 +70,7 @@ Here’s a general workflow to create a sample project using the `go/v4` plugin 
   	"--controller",
   	"--make=false",
   )
-  Expect(err).NotTo(HaveOccurred(), "Failed to create an API")
+  ExpectWithOffset(1, err).NotTo(HaveOccurred())
   ```
 
 - **To scaffold webhook configurations:**
@@ -83,7 +83,7 @@ Here’s a general workflow to create a sample project using the `go/v4` plugin 
   	"--defaulting",
   	"--programmatic-validation",
   )
-  Expect(err).NotTo(HaveOccurred(), "Failed to create an webhook")
+  ExpectWithOffset(1, err).NotTo(HaveOccurred())
   ```
 
 [cert-manager-install]: https://pkg.go.dev/sigs.k8s.io/kubebuilder/v4/test/e2e/utils#TestContext.InstallCertManager

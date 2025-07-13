@@ -30,7 +30,7 @@ type HelmChart struct {
 	machinery.ProjectNameMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *HelmChart) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join("dist", "chart", "Chart.yaml")

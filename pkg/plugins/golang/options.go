@@ -23,31 +23,33 @@ import (
 	"sigs.k8s.io/kubebuilder/v4/pkg/model/resource"
 )
 
-var coreGroups = map[string]string{
-	"admission":             "k8s.io",
-	"admissionregistration": "k8s.io",
-	"apps":                  "",
-	"auditregistration":     "k8s.io",
-	"apiextensions":         "k8s.io",
-	"authentication":        "k8s.io",
-	"authorization":         "k8s.io",
-	"autoscaling":           "",
-	"batch":                 "",
-	"certificates":          "k8s.io",
-	"coordination":          "k8s.io",
-	"core":                  "",
-	"events":                "k8s.io",
-	"extensions":            "",
-	"imagepolicy":           "k8s.io",
-	"networking":            "k8s.io",
-	"node":                  "k8s.io",
-	"metrics":               "k8s.io",
-	"policy":                "",
-	"rbac.authorization":    "k8s.io",
-	"scheduling":            "k8s.io",
-	"setting":               "k8s.io",
-	"storage":               "k8s.io",
-}
+var (
+	coreGroups = map[string]string{
+		"admission":             "k8s.io",
+		"admissionregistration": "k8s.io",
+		"apps":                  "",
+		"auditregistration":     "k8s.io",
+		"apiextensions":         "k8s.io",
+		"authentication":        "k8s.io",
+		"authorization":         "k8s.io",
+		"autoscaling":           "",
+		"batch":                 "",
+		"certificates":          "k8s.io",
+		"coordination":          "k8s.io",
+		"core":                  "",
+		"events":                "k8s.io",
+		"extensions":            "",
+		"imagepolicy":           "k8s.io",
+		"networking":            "k8s.io",
+		"node":                  "k8s.io",
+		"metrics":               "k8s.io",
+		"policy":                "",
+		"rbac.authorization":    "k8s.io",
+		"scheduling":            "k8s.io",
+		"setting":               "k8s.io",
+		"storage":               "k8s.io",
+	}
+)
 
 // Options contains the information required to build a new resource.Resource.
 type Options struct {
@@ -70,9 +72,6 @@ type Options struct {
 	DoDefaulting bool
 	DoValidation bool
 	DoConversion bool
-
-	// Spoke versions for conversion webhook
-	Spoke []string
 }
 
 // UpdateResource updates the provided resource with the options
@@ -82,12 +81,14 @@ func (opts Options) UpdateResource(res *resource.Resource, c config.Config) {
 	}
 
 	if opts.DoAPI {
+		//nolint:staticcheck
 		res.Path = resource.APIPackagePath(c.GetRepository(), res.Group, res.Version, c.IsMultiGroup())
 
 		res.API = &resource.API{
 			CRDVersion: "v1",
 			Namespaced: opts.Namespaced,
 		}
+
 	}
 
 	if opts.DoController {
@@ -95,6 +96,7 @@ func (opts Options) UpdateResource(res *resource.Resource, c config.Config) {
 	}
 
 	if opts.DoDefaulting || opts.DoValidation || opts.DoConversion {
+		//nolint:staticcheck
 		res.Path = resource.APIPackagePath(c.GetRepository(), res.Group, res.Version, c.IsMultiGroup())
 
 		res.Webhooks.WebhookVersion = "v1"
@@ -106,7 +108,6 @@ func (opts Options) UpdateResource(res *resource.Resource, c config.Config) {
 		}
 		if opts.DoConversion {
 			res.Webhooks.Conversion = true
-			res.Webhooks.Spoke = opts.Spoke
 		}
 	}
 

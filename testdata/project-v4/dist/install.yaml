@@ -11,7 +11,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: admirales.crew.testproject.org
 spec:
   group: crew.testproject.org
@@ -25,7 +25,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: Admiral is the Schema for the admirales API
+        description: Admiral is the Schema for the admirales API.
         properties:
           apiVersion:
             description: |-
@@ -45,18 +45,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Admiral
+            description: AdmiralSpec defines the desired state of Admiral.
             properties:
               foo:
-                description: foo is an example field of Admiral. Edit admiral_types.go
+                description: Foo is an example field of Admiral. Edit admiral_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Admiral
+            description: AdmiralStatus defines the observed state of Admiral.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -67,7 +65,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: captains.crew.testproject.org
 spec:
   group: crew.testproject.org
@@ -81,7 +79,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: Captain is the Schema for the captains API
+        description: Captain is the Schema for the captains API.
         properties:
           apiVersion:
             description: |-
@@ -101,18 +99,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Captain
+            description: CaptainSpec defines the desired state of Captain.
             properties:
               foo:
-                description: foo is an example field of Captain. Edit captain_types.go
+                description: Foo is an example field of Captain. Edit captain_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Captain
+            description: CaptainStatus defines the observed state of Captain.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -123,8 +119,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: project-v4-system/project-v4-serving-cert
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: firstmates.crew.testproject.org
 spec:
   conversion:
@@ -148,7 +143,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: FirstMate is the Schema for the firstmates API
+        description: FirstMate is the Schema for the firstmates API.
         properties:
           apiVersion:
             description: |-
@@ -168,18 +163,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of FirstMate
+            description: FirstMateSpec defines the desired state of FirstMate.
             properties:
               foo:
-                description: foo is an example field of FirstMate. Edit firstmate_types.go
+                description: Foo is an example field of FirstMate. Edit firstmate_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of FirstMate
+            description: FirstMateStatus defines the observed state of FirstMate.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -188,7 +181,7 @@ spec:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: FirstMate is the Schema for the firstmates API
+        description: FirstMate is the Schema for the firstmates API.
         properties:
           apiVersion:
             description: |-
@@ -208,18 +201,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of FirstMate
+            description: FirstMateSpec defines the desired state of FirstMate.
             properties:
               foo:
-                description: foo is an example field of FirstMate. Edit firstmate_types.go
+                description: Foo is an example field of FirstMate. Edit firstmate_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of FirstMate
+            description: FirstMateStatus defines the observed state of FirstMate.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: false
@@ -643,7 +634,6 @@ spec:
     protocol: TCP
     targetPort: 8443
   selector:
-    app.kubernetes.io/name: project-v4
     control-plane: controller-manager
 ---
 apiVersion: v1
@@ -660,7 +650,6 @@ spec:
     protocol: TCP
     targetPort: 9443
   selector:
-    app.kubernetes.io/name: project-v4
     control-plane: controller-manager
 ---
 apiVersion: apps/v1
@@ -676,14 +665,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: project-v4
       control-plane: controller-manager
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        app.kubernetes.io/name: project-v4
         control-plane: controller-manager
     spec:
       containers:
@@ -691,7 +678,6 @@ spec:
         - --metrics-bind-address=:8443
         - --leader-elect
         - --health-probe-bind-address=:8081
-        - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         command:
         - /manager
         image: controller:latest
@@ -724,10 +710,9 @@ spec:
           capabilities:
             drop:
             - ALL
-          readOnlyRootFilesystem: true
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
-          name: webhook-certs
+          name: cert
           readOnly: true
       securityContext:
         runAsNonRoot: true
@@ -736,60 +721,14 @@ spec:
       serviceAccountName: project-v4-controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
-      - name: webhook-certs
+      - name: cert
         secret:
+          defaultMode: 420
           secretName: webhook-server-cert
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  labels:
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: project-v4
-  name: project-v4-metrics-certs
-  namespace: project-v4-system
-spec:
-  dnsNames:
-  - SERVICE_NAME.SERVICE_NAMESPACE.svc
-  - SERVICE_NAME.SERVICE_NAMESPACE.svc.cluster.local
-  issuerRef:
-    kind: Issuer
-    name: project-v4-selfsigned-issuer
-  secretName: metrics-server-cert
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  labels:
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: project-v4
-  name: project-v4-serving-cert
-  namespace: project-v4-system
-spec:
-  dnsNames:
-  - project-v4-webhook-service.project-v4-system.svc
-  - project-v4-webhook-service.project-v4-system.svc.cluster.local
-  issuerRef:
-    kind: Issuer
-    name: project-v4-selfsigned-issuer
-  secretName: webhook-server-cert
----
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  labels:
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: project-v4
-  name: project-v4-selfsigned-issuer
-  namespace: project-v4-system
-spec:
-  selfSigned: {}
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: project-v4-system/project-v4-serving-cert
   name: project-v4-mutating-webhook-configuration
 webhooks:
 - admissionReviewVersions:
@@ -896,8 +835,6 @@ webhooks:
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: project-v4-system/project-v4-serving-cert
   name: project-v4-validating-webhook-configuration
 webhooks:
 - admissionReviewVersions:

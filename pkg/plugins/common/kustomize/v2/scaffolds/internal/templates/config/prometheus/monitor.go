@@ -30,7 +30,7 @@ type Monitor struct {
 	machinery.ProjectNameMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *Monitor) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join("config", "prometheus", "monitor.yaml")
@@ -41,7 +41,7 @@ func (f *Monitor) SetTemplateDefaults() error {
 	return nil
 }
 
-//nolint:lll
+// nolint:lll
 const serviceMonitorTemplate = `# Prometheus Monitor Service (Metrics)
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -68,5 +68,4 @@ spec:
   selector:
     matchLabels:
       control-plane: controller-manager
-      app.kubernetes.io/name: {{ .ProjectName }}
 `

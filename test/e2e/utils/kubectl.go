@@ -19,7 +19,6 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -115,12 +114,12 @@ func (vi VersionInfo) GetMinorInt() uint64 { return vi.minor }
 func (vi *VersionInfo) parseVersionInts() (err error) {
 	if vi.Major != "" {
 		if vi.major, err = strconv.ParseUint(vi.Major, 10, 64); err != nil {
-			return fmt.Errorf("error parsing major version %q: %w", vi.Major, err)
+			return err
 		}
 	}
 	if vi.Minor != "" {
 		if vi.minor, err = strconv.ParseUint(vi.Minor, 10, 64); err != nil {
-			return fmt.Errorf("error parsing minor version %q: %w", vi.Minor, err)
+			return err
 		}
 	}
 	return nil
@@ -136,25 +135,31 @@ func (v *KubernetesVersion) prepare() error {
 	if err := v.ClientVersion.parseVersionInts(); err != nil {
 		return err
 	}
-	return v.ServerVersion.parseVersionInts()
+	if err := v.ServerVersion.parseVersionInts(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Version is a func to run kubectl version command
 func (k *Kubectl) Version() (ver KubernetesVersion, err error) {
 	out, err := k.Command("version", "-o", "json")
 	if err != nil {
-		return KubernetesVersion{}, fmt.Errorf("error getting kubernetes version: %w", err)
+		return KubernetesVersion{}, err
 	}
-	if decodeErr := ver.decode(out); decodeErr != nil {
-		return KubernetesVersion{}, fmt.Errorf("error parsing kubernetes version: %w", decodeErr)
+	if err := ver.decode(out); err != nil {
+		return KubernetesVersion{}, err
 	}
 	return ver, nil
 }
 
-func (v *KubernetesVersion) decode(out string) error {
+func (v *KubernetesVersion) decode(out string) (err error) {
 	dec := json.NewDecoder(strings.NewReader(out))
 	if err := dec.Decode(&v); err != nil {
-		return fmt.Errorf("error decoding kubernetes version: %w", err)
+		return err
 	}
-	return v.prepare()
+	if err := v.prepare(); err != nil {
+		return err
+	}
+	return nil
 }

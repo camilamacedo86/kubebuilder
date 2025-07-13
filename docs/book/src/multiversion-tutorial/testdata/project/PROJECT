@@ -2,12 +2,9 @@
 # This file is used to track the info used to scaffold your project
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
-cliVersion: (devel)
 domain: tutorial.kubebuilder.io
 layout:
 - go.kubebuilder.io/v4
-plugins:
-  helm.kubebuilder.io/v1-alpha: {}
 projectName: project
 repo: tutorial.kubebuilder.io/project
 resources:
@@ -21,10 +18,7 @@ resources:
   path: tutorial.kubebuilder.io/project/api/v1
   version: v1
   webhooks:
-    conversion: true
     defaulting: true
-    spoke:
-    - v2
     validation: true
     webhookVersion: v1
 - api:
@@ -36,6 +30,7 @@ resources:
   path: tutorial.kubebuilder.io/project/api/v2
   version: v2
   webhooks:
+    conversion: true
     defaulting: true
     validation: true
     webhookVersion: v1

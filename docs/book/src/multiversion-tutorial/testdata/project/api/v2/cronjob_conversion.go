@@ -1,6 +1,4 @@
 /*
-Copyright 2025 The Kubernetes authors.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -23,17 +21,16 @@ For imports, we'll need the controller-runtime
 package, plus the API version for our hub type (v1), and finally some of the
 standard packages.
 */
-
 import (
 	"fmt"
 	"strings"
 
-	"log"
-
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
-	batchv1 "tutorial.kubebuilder.io/project/api/v1"
-) // +kubebuilder:docs-gen:collapse=Imports
+	v1 "tutorial.kubebuilder.io/project/api/v1"
+)
+
+// +kubebuilder:docs-gen:collapse=Imports
 
 /*
 Our "spoke" versions need to implement the
@@ -46,12 +43,9 @@ methods to convert to/from the hub version.
 ConvertTo is expected to modify its argument to contain the converted object.
 Most of the conversion is straightforward copying, except for converting our changed field.
 */
-
-// ConvertTo converts this CronJob (v2) to the Hub version (v1).
+// ConvertTo converts this CronJob to the Hub version (v1).
 func (src *CronJob) ConvertTo(dstRaw conversion.Hub) error {
-	dst := dstRaw.(*batchv1.CronJob)
-	log.Printf("ConvertTo: Converting CronJob from Spoke version v2 to Hub version v1;"+
-		"source: %s/%s, target: %s/%s", src.Namespace, src.Name, dst.Namespace, dst.Name)
+	dst := dstRaw.(*v1.CronJob)
 
 	sched := src.Spec.Schedule
 	scheduleParts := []string{"*", "*", "*", "*", "*"}
@@ -80,7 +74,7 @@ func (src *CronJob) ConvertTo(dstRaw conversion.Hub) error {
 
 	// Spec
 	dst.Spec.StartingDeadlineSeconds = src.Spec.StartingDeadlineSeconds
-	dst.Spec.ConcurrencyPolicy = batchv1.ConcurrencyPolicy(src.Spec.ConcurrencyPolicy)
+	dst.Spec.ConcurrencyPolicy = v1.ConcurrencyPolicy(src.Spec.ConcurrencyPolicy)
 	dst.Spec.Suspend = src.Spec.Suspend
 	dst.Spec.JobTemplate = src.Spec.JobTemplate
 	dst.Spec.SuccessfulJobsHistoryLimit = src.Spec.SuccessfulJobsHistoryLimit
@@ -91,7 +85,6 @@ func (src *CronJob) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Status.LastScheduleTime = src.Status.LastScheduleTime
 
 	// +kubebuilder:docs-gen:collapse=rote conversion
-
 	return nil
 }
 
@@ -100,11 +93,9 @@ ConvertFrom is expected to modify its receiver to contain the converted object.
 Most of the conversion is straightforward copying, except for converting our changed field.
 */
 
-// ConvertFrom converts the Hub version (v1) to this CronJob (v2).
+// ConvertFrom converts from the Hub version (v1) to this version.
 func (dst *CronJob) ConvertFrom(srcRaw conversion.Hub) error {
-	src := srcRaw.(*batchv1.CronJob)
-	log.Printf("ConvertFrom: Converting CronJob from Hub version v1 to Spoke version v2;"+
-		"source: %s/%s, target: %s/%s", src.Namespace, src.Name, dst.Namespace, dst.Name)
+	src := srcRaw.(*v1.CronJob)
 
 	schedParts := strings.Split(src.Spec.Schedule, " ")
 	if len(schedParts) != 5 {
@@ -142,6 +133,5 @@ func (dst *CronJob) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Status.LastScheduleTime = src.Status.LastScheduleTime
 
 	// +kubebuilder:docs-gen:collapse=rote conversion
-
 	return nil
 }

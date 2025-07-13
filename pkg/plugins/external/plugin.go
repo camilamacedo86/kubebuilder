@@ -74,7 +74,6 @@ func (p Plugin) GetEditSubcommand() plugin.EditSubcommand {
 	}
 }
 
-// DeprecationWarning define the deprecation message or return empty when plugin is not deprecated
 func (p Plugin) DeprecationWarning() string {
 	return ""
 }

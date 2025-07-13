@@ -27,7 +27,7 @@ type GitIgnore struct {
 	machinery.TemplateMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *GitIgnore) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = ".gitignore"

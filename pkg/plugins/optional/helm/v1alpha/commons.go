@@ -18,7 +18,6 @@ package v1alpha
 
 import (
 	"errors"
-	"fmt"
 
 	"sigs.k8s.io/kubebuilder/v4/pkg/config"
 )
@@ -27,10 +26,10 @@ func insertPluginMetaToConfig(target config.Config, cfg pluginConfig) error {
 	err := target.DecodePluginConfig(pluginKey, cfg)
 	if !errors.As(err, &config.UnsupportedFieldError{}) {
 		if err != nil && !errors.As(err, &config.PluginKeyNotFoundError{}) {
-			return fmt.Errorf("error decoding plugin configuration: %w", err)
+			return err
 		}
 		if err = target.EncodePluginConfig(pluginKey, cfg); err != nil {
-			return fmt.Errorf("error encoding plugin config: %w", err)
+			return err
 		}
 	}
 

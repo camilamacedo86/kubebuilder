@@ -14,22 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package main
 
 import (
 	"fmt"
-	"runtime/debug"
 )
-
-const unknown = "unknown"
 
 // var needs to be used instead of const as ldflags is used to fill this
 // information in the release process
 var (
-	kubeBuilderVersion      = unknown
-	kubernetesVendorVersion = "1.33.0"
-	goos                    = unknown
-	goarch                  = unknown
+	kubeBuilderVersion      = "unknown"
+	kubernetesVendorVersion = "unknown"
+	goos                    = "unknown"
+	goarch                  = "unknown"
 	gitCommit               = "$Format:%H$" // sha1 from git, output of $(git rev-parse HEAD)
 
 	buildDate = "1970-01-01T00:00:00Z" // build date in ISO8601 format, output of $(date -u +'%Y-%m-%dT%H:%M:%SZ')
@@ -45,14 +42,8 @@ type version struct {
 	GoArch             string `json:"goArch"`
 }
 
-// versionString returns the Full CLI version
+// versionString returns the CLI version
 func versionString() string {
-	if kubeBuilderVersion == unknown {
-		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
-			kubeBuilderVersion = info.Main.Version
-		}
-	}
-
 	return fmt.Sprintf("Version: %#v", version{
 		kubeBuilderVersion,
 		kubernetesVendorVersion,
@@ -61,14 +52,4 @@ func versionString() string {
 		goos,
 		goarch,
 	})
-}
-
-// getKubebuilderVersion returns only the CLI version string
-func getKubebuilderVersion() string {
-	if kubeBuilderVersion == unknown {
-		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
-			kubeBuilderVersion = info.Main.Version
-		}
-	}
-	return kubeBuilderVersion
 }

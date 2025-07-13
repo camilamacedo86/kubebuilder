@@ -5,7 +5,7 @@ kind: ClusterRole
 metadata:
   labels:
     {{- include "chart.labels" . | nindent 4 }}
-  name: project-v4-with-plugins-manager-role
+  name: manager-role
 rules:
 - apiGroups:
   - ""

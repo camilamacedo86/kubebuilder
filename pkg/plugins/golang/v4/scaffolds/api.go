@@ -49,9 +49,9 @@ type apiScaffolder struct {
 }
 
 // NewAPIScaffolder returns a new Scaffolder for API/controller creation operations
-func NewAPIScaffolder(cfg config.Config, res resource.Resource, force bool) plugins.Scaffolder {
+func NewAPIScaffolder(config config.Config, res resource.Resource, force bool) plugins.Scaffolder {
 	return &apiScaffolder{
-		config:   cfg,
+		config:   config,
 		resource: res,
 		force:    force,
 	}
@@ -70,11 +70,6 @@ func (s *apiScaffolder) Scaffold() error {
 	boilerplate, err := afero.ReadFile(s.fs.FS, hack.DefaultBoilerplatePath)
 	if err != nil {
 		if errors.Is(err, afero.ErrFileNotFound) {
-			log.Warnf("Unable to find %s: %s.\n"+
-				"This file is used to generate the license header in the project.\n"+
-				"Note that controller-gen will also use this. Therefore, ensure that you "+
-				"add the license file or configure your project accordingly.",
-				hack.DefaultBoilerplatePath, err)
 			boilerplate = []byte("")
 		} else {
 			return fmt.Errorf("error scaffolding API/controller: unable to load boilerplate: %w", err)
@@ -101,24 +96,24 @@ func (s *apiScaffolder) Scaffold() error {
 			&api.Types{Force: s.force},
 			&api.Group{},
 		); err != nil {
-			return fmt.Errorf("error scaffolding APIs: %w", err)
+			return fmt.Errorf("error scaffolding APIs: %v", err)
 		}
 	}
 
 	if doController {
 		if err := scaffold.Execute(
-			&controllers.SuiteTest{Force: s.force},
+			&controllers.SuiteTest{Force: s.force, K8SVersion: EnvtestK8SVersion},
 			&controllers.Controller{ControllerRuntimeVersion: ControllerRuntimeVersion, Force: s.force},
 			&controllers.ControllerTest{Force: s.force, DoAPI: doAPI},
 		); err != nil {
-			return fmt.Errorf("error scaffolding controller: %w", err)
+			return fmt.Errorf("error scaffolding controller: %v", err)
 		}
 	}
 
 	if err := scaffold.Execute(
 		&cmd.MainUpdater{WireResource: doAPI, WireController: doController},
 	); err != nil {
-		return fmt.Errorf("error updating cmd/main.go: %w", err)
+		return fmt.Errorf("error updating cmd/main.go: %v", err)
 	}
 
 	return nil

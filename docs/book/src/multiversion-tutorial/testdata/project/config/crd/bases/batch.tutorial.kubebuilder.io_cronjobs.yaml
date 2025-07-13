@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: cronjobs.batch.tutorial.kubebuilder.io
 spec:
   group: batch.tutorial.kubebuilder.io
@@ -840,8 +840,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -1552,8 +1550,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -2278,8 +2274,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -2784,39 +2778,6 @@ spec:
                                 x-kubernetes-list-map-keys:
                                 - name
                                 x-kubernetes-list-type: map
-                              resources:
-                                properties:
-                                  claims:
-                                    items:
-                                      properties:
-                                        name:
-                                          type: string
-                                        request:
-                                          type: string
-                                      required:
-                                      - name
-                                      type: object
-                                    type: array
-                                    x-kubernetes-list-map-keys:
-                                    - name
-                                    x-kubernetes-list-type: map
-                                  limits:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    type: object
-                                  requests:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    type: object
-                                type: object
                               restartPolicy:
                                 type: string
                               runtimeClassName:
@@ -2859,8 +2820,6 @@ spec:
                                   runAsUser:
                                     format: int64
                                     type: integer
-                                  seLinuxChangePolicy:
-                                    type: string
                                   seLinuxOptions:
                                     properties:
                                       level:
@@ -3840,8 +3799,6 @@ spec:
                 format: date-time
                 type: string
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -4673,8 +4630,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -5385,8 +5340,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -6111,8 +6064,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -6617,39 +6568,6 @@ spec:
                                 x-kubernetes-list-map-keys:
                                 - name
                                 x-kubernetes-list-type: map
-                              resources:
-                                properties:
-                                  claims:
-                                    items:
-                                      properties:
-                                        name:
-                                          type: string
-                                        request:
-                                          type: string
-                                      required:
-                                      - name
-                                      type: object
-                                    type: array
-                                    x-kubernetes-list-map-keys:
-                                    - name
-                                    x-kubernetes-list-type: map
-                                  limits:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    type: object
-                                  requests:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    type: object
-                                type: object
                               restartPolicy:
                                 type: string
                               runtimeClassName:
@@ -6692,8 +6610,6 @@ spec:
                                   runAsUser:
                                     format: int64
                                     type: integer
-                                  seLinuxChangePolicy:
-                                    type: string
                                   seLinuxOptions:
                                     properties:
                                       level:
@@ -7683,8 +7599,6 @@ spec:
                 format: date-time
                 type: string
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: false

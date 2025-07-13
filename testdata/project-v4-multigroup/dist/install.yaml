@@ -11,7 +11,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: bars.fiz.testproject.org
 spec:
   group: fiz.testproject.org
@@ -25,7 +25,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: Bar is the Schema for the bars API
+        description: Bar is the Schema for the bars API.
         properties:
           apiVersion:
             description: |-
@@ -45,18 +45,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Bar
+            description: BarSpec defines the desired state of Bar.
             properties:
               foo:
-                description: foo is an example field of Bar. Edit bar_types.go to
+                description: Foo is an example field of Bar. Edit bar_types.go to
                   remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Bar
+            description: BarStatus defines the observed state of Bar.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -67,7 +65,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: bars.foo.testproject.org
 spec:
   group: foo.testproject.org
@@ -81,7 +79,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: Bar is the Schema for the bars API
+        description: Bar is the Schema for the bars API.
         properties:
           apiVersion:
             description: |-
@@ -101,18 +99,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Bar
+            description: BarSpec defines the desired state of Bar.
             properties:
               foo:
-                description: foo is an example field of Bar. Edit bar_types.go to
+                description: Foo is an example field of Bar. Edit bar_types.go to
                   remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Bar
+            description: BarStatus defines the observed state of Bar.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -123,7 +119,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: busyboxes.example.com.testproject.org
 spec:
   group: example.com.testproject.org
@@ -157,29 +153,22 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Busybox
+            description: BusyboxSpec defines the desired state of Busybox
             properties:
               size:
-                default: 1
-                description: size defines the number of Busybox instances
+                description: |-
+                  Size defines the number of Busybox instances
+                  The following markers will use OpenAPI v3 schema to validate the value
+                  More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
                 format: int32
-                minimum: 0
+                maximum: 3
+                minimum: 1
                 type: integer
             type: object
           status:
-            description: status defines the observed state of Busybox
+            description: BusyboxStatus defines the observed state of Busybox
             properties:
               conditions:
-                description: |-
-                  conditions represent the current state of the Busybox resource.
-                  Each condition has a unique type and reflects the status of a specific aspect of the resource.
-
-                  Standard condition types include:
-                  - "Available": the resource is fully functional
-                  - "Progressing": the resource is being created or updated
-                  - "Degraded": the resource failed to reach or maintain its desired state
-
-                  The status of each condition is one of True, False, or Unknown.
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -235,12 +224,7 @@ spec:
                   - type
                   type: object
                 type: array
-                x-kubernetes-list-map-keys:
-                - type
-                x-kubernetes-list-type: map
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -251,7 +235,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: captains.crew.testproject.org
 spec:
   group: crew.testproject.org
@@ -265,7 +249,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: Captain is the Schema for the captains API
+        description: Captain is the Schema for the captains API.
         properties:
           apiVersion:
             description: |-
@@ -285,18 +269,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Captain
+            description: CaptainSpec defines the desired state of Captain.
             properties:
               foo:
-                description: foo is an example field of Captain. Edit captain_types.go
+                description: Foo is an example field of Captain. Edit captain_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Captain
+            description: CaptainStatus defines the observed state of Captain.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -307,7 +289,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: cruisers.ship.testproject.org
 spec:
   group: ship.testproject.org
@@ -321,7 +303,7 @@ spec:
   - name: v2alpha1
     schema:
       openAPIV3Schema:
-        description: Cruiser is the Schema for the cruisers API
+        description: Cruiser is the Schema for the cruisers API.
         properties:
           apiVersion:
             description: |-
@@ -341,18 +323,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Cruiser
+            description: CruiserSpec defines the desired state of Cruiser.
             properties:
               foo:
-                description: foo is an example field of Cruiser. Edit cruiser_types.go
+                description: Foo is an example field of Cruiser. Edit cruiser_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Cruiser
+            description: CruiserStatus defines the observed state of Cruiser.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -363,7 +343,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: destroyers.ship.testproject.org
 spec:
   group: ship.testproject.org
@@ -377,7 +357,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: Destroyer is the Schema for the destroyers API
+        description: Destroyer is the Schema for the destroyers API.
         properties:
           apiVersion:
             description: |-
@@ -397,18 +377,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Destroyer
+            description: DestroyerSpec defines the desired state of Destroyer.
             properties:
               foo:
-                description: foo is an example field of Destroyer. Edit destroyer_types.go
+                description: Foo is an example field of Destroyer. Edit destroyer_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Destroyer
+            description: DestroyerStatus defines the observed state of Destroyer.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -419,7 +397,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: frigates.ship.testproject.org
 spec:
   group: ship.testproject.org
@@ -433,7 +411,7 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Frigate is the Schema for the frigates API
+        description: Frigate is the Schema for the frigates API.
         properties:
           apiVersion:
             description: |-
@@ -453,18 +431,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Frigate
+            description: FrigateSpec defines the desired state of Frigate.
             properties:
               foo:
-                description: foo is an example field of Frigate. Edit frigate_types.go
+                description: Foo is an example field of Frigate. Edit frigate_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Frigate
+            description: FrigateStatus defines the observed state of Frigate.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -475,7 +451,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: healthcheckpolicies.foo.policy.testproject.org
 spec:
   group: foo.policy.testproject.org
@@ -489,7 +465,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: HealthCheckPolicy is the Schema for the healthcheckpolicies API
+        description: HealthCheckPolicy is the Schema for the healthcheckpolicies API.
         properties:
           apiVersion:
             description: |-
@@ -509,18 +485,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of HealthCheckPolicy
+            description: HealthCheckPolicySpec defines the desired state of HealthCheckPolicy.
             properties:
               foo:
-                description: foo is an example field of HealthCheckPolicy. Edit healthcheckpolicy_types.go
+                description: Foo is an example field of HealthCheckPolicy. Edit healthcheckpolicy_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of HealthCheckPolicy
+            description: HealthCheckPolicyStatus defines the observed state of HealthCheckPolicy.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -531,7 +505,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: krakens.sea-creatures.testproject.org
 spec:
   group: sea-creatures.testproject.org
@@ -545,7 +519,7 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Kraken is the Schema for the krakens API
+        description: Kraken is the Schema for the krakens API.
         properties:
           apiVersion:
             description: |-
@@ -565,18 +539,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Kraken
+            description: KrakenSpec defines the desired state of Kraken.
             properties:
               foo:
-                description: foo is an example field of Kraken. Edit kraken_types.go
+                description: Foo is an example field of Kraken. Edit kraken_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Kraken
+            description: KrakenStatus defines the observed state of Kraken.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -587,7 +559,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: leviathans.sea-creatures.testproject.org
 spec:
   group: sea-creatures.testproject.org
@@ -601,7 +573,7 @@ spec:
   - name: v1beta2
     schema:
       openAPIV3Schema:
-        description: Leviathan is the Schema for the leviathans API
+        description: Leviathan is the Schema for the leviathans API.
         properties:
           apiVersion:
             description: |-
@@ -621,18 +593,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Leviathan
+            description: LeviathanSpec defines the desired state of Leviathan.
             properties:
               foo:
-                description: foo is an example field of Leviathan. Edit leviathan_types.go
+                description: Foo is an example field of Leviathan. Edit leviathan_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Leviathan
+            description: LeviathanStatus defines the observed state of Leviathan.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -643,7 +613,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: memcacheds.example.com.testproject.org
 spec:
   group: example.com.testproject.org
@@ -677,36 +647,27 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Memcached
+            description: MemcachedSpec defines the desired state of Memcached
             properties:
               containerPort:
-                description: containerPort defines the port that will be used to init
-                  the container with the image
+                description: Port defines the port that will be used to init the container
+                  with the image
                 format: int32
                 type: integer
               size:
-                default: 1
-                description: size defines the number of Memcached instances
+                description: |-
+                  Size defines the number of Memcached instances
+                  The following markers will use OpenAPI v3 schema to validate the value
+                  More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
                 format: int32
-                minimum: 0
+                maximum: 3
+                minimum: 1
                 type: integer
-            required:
-            - containerPort
             type: object
           status:
-            description: status defines the observed state of Memcached
+            description: MemcachedStatus defines the observed state of Memcached
             properties:
               conditions:
-                description: |-
-                  conditions represent the current state of the Memcached resource.
-                  Each condition has a unique type and reflects the status of a specific aspect of the resource.
-
-                  Standard condition types include:
-                  - "Available": the resource is fully functional
-                  - "Progressing": the resource is being created or updated
-                  - "Degraded": the resource failed to reach or maintain its desired state
-
-                  The status of each condition is one of True, False, or Unknown.
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -762,12 +723,7 @@ spec:
                   - type
                   type: object
                 type: array
-                x-kubernetes-list-map-keys:
-                - type
-                x-kubernetes-list-type: map
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -778,8 +734,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: project-v4-multigroup-system/project-v4-multigroup-serving-cert
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: wordpresses.example.com.testproject.org
 spec:
   conversion:
@@ -803,7 +758,7 @@ spec:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: Wordpress is the Schema for the wordpresses API
+        description: Wordpress is the Schema for the wordpresses API.
         properties:
           apiVersion:
             description: |-
@@ -823,18 +778,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Wordpress
+            description: WordpressSpec defines the desired state of Wordpress.
             properties:
               foo:
-                description: foo is an example field of Wordpress. Edit wordpress_types.go
+                description: Foo is an example field of Wordpress. Edit wordpress_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Wordpress
+            description: WordpressStatus defines the observed state of Wordpress.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -843,7 +796,7 @@ spec:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: Wordpress is the Schema for the wordpresses API
+        description: Wordpress is the Schema for the wordpresses API.
         properties:
           apiVersion:
             description: |-
@@ -863,18 +816,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Wordpress
+            description: WordpressSpec defines the desired state of Wordpress.
             properties:
               foo:
-                description: foo is an example field of Wordpress. Edit wordpress_types.go
+                description: Foo is an example field of Wordpress. Edit wordpress_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of Wordpress
+            description: WordpressStatus defines the observed state of Wordpress.
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: false
@@ -2120,7 +2071,6 @@ spec:
     protocol: TCP
     targetPort: 8443
   selector:
-    app.kubernetes.io/name: project-v4-multigroup
     control-plane: controller-manager
 ---
 apiVersion: v1
@@ -2137,7 +2087,6 @@ spec:
     protocol: TCP
     targetPort: 9443
   selector:
-    app.kubernetes.io/name: project-v4-multigroup
     control-plane: controller-manager
 ---
 apiVersion: apps/v1
@@ -2153,14 +2102,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: project-v4-multigroup
       control-plane: controller-manager
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        app.kubernetes.io/name: project-v4-multigroup
         control-plane: controller-manager
     spec:
       containers:
@@ -2168,7 +2115,6 @@ spec:
         - --metrics-bind-address=:8443
         - --leader-elect
         - --health-probe-bind-address=:8081
-        - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         command:
         - /manager
         env:
@@ -2206,10 +2152,9 @@ spec:
           capabilities:
             drop:
             - ALL
-          readOnlyRootFilesystem: true
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
-          name: webhook-certs
+          name: cert
           readOnly: true
       securityContext:
         runAsNonRoot: true
@@ -2218,60 +2163,14 @@ spec:
       serviceAccountName: project-v4-multigroup-controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
-      - name: webhook-certs
+      - name: cert
         secret:
+          defaultMode: 420
           secretName: webhook-server-cert
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  labels:
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: project-v4-multigroup
-  name: project-v4-multigroup-metrics-certs
-  namespace: project-v4-multigroup-system
-spec:
-  dnsNames:
-  - SERVICE_NAME.SERVICE_NAMESPACE.svc
-  - SERVICE_NAME.SERVICE_NAMESPACE.svc.cluster.local
-  issuerRef:
-    kind: Issuer
-    name: project-v4-multigroup-selfsigned-issuer
-  secretName: metrics-server-cert
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  labels:
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: project-v4-multigroup
-  name: project-v4-multigroup-serving-cert
-  namespace: project-v4-multigroup-system
-spec:
-  dnsNames:
-  - project-v4-multigroup-webhook-service.project-v4-multigroup-system.svc
-  - project-v4-multigroup-webhook-service.project-v4-multigroup-system.svc.cluster.local
-  issuerRef:
-    kind: Issuer
-    name: project-v4-multigroup-selfsigned-issuer
-  secretName: webhook-server-cert
----
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  labels:
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: project-v4-multigroup
-  name: project-v4-multigroup-selfsigned-issuer
-  namespace: project-v4-multigroup-system
-spec:
-  selfSigned: {}
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: project-v4-multigroup-system/project-v4-multigroup-serving-cert
   name: project-v4-multigroup-mutating-webhook-configuration
 webhooks:
 - admissionReviewVersions:
@@ -2358,8 +2257,6 @@ webhooks:
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: project-v4-multigroup-system/project-v4-multigroup-serving-cert
   name: project-v4-multigroup-validating-webhook-configuration
 webhooks:
 - admissionReviewVersions:

@@ -36,6 +36,7 @@ import (
 
 var _ = Describe("kubebuilder", func() {
 	Context("alpha generate", func() {
+
 		var (
 			kbc              *utils.TestContext
 			projectOutputDir string
@@ -67,31 +68,27 @@ var _ = Describe("kubebuilder", func() {
 			kbc.Destroy()
 		})
 
-		It("should regenerate the project in current directory with success", func() {
+		It("should regenerate the project with success", func() {
 			generateProject(kbc)
-			regenerateProject(kbc)
-			By("checking that the project file was generated in the current directory")
-			validateProjectFile(kbc, filepath.Join(kbc.Dir, "PROJECT"))
+			regenerateProject(kbc, projectOutputDir)
+			validateProjectFile(kbc, projectFilePath)
 		})
 
-		It("should regenerate project with plugins with success", func() {
-			By("Enabling the Grafana plugin")
-			err := kbc.Edit("--plugins", "grafana.kubebuilder.io/v1-alpha")
-			Expect(err).NotTo(HaveOccurred(), "Failed to edit project to enable Grafana Plugin")
-
-			By("Generate API with Deploy Image plugin")
-			generateAPIWithDeployImage(kbc)
-
-			By("Enabling Helm plugin")
-			err = kbc.Edit("--plugins", "helm.kubebuilder.io/v1-alpha")
-			Expect(err).NotTo(HaveOccurred(), "Failed to edit project to enable Helm Plugin")
-
-			By("Re-generating the project with plugins")
-			regenerateProjectWith(kbc, projectOutputDir)
-
-			By("By validating the expected scaffolded files")
+		It("should regenerate project with grafana plugin with success", func() {
+			generateProjectWithGrafanaPlugin(kbc)
+			regenerateProject(kbc, projectOutputDir)
 			validateGrafanaPlugin(projectFilePath)
+		})
+
+		It("should regenerate project with DeployImage plugin with success", func() {
+			generateProjectWithDeployImagePlugin(kbc)
+			regenerateProject(kbc, projectOutputDir)
 			validateDeployImagePlugin(projectFilePath)
+		})
+
+		It("should regenerate project with helm plugin with success", func() {
+			generateProjectWithHelmPlugin(kbc)
+			regenerateProject(kbc, projectOutputDir)
 			validateHelmPlugin(projectFilePath)
 		})
 	})
@@ -126,18 +123,6 @@ func generateProject(kbc *utils.TestContext) {
 	)
 	Expect(err).NotTo(HaveOccurred(), "Failed to scaffold API with resource and controller")
 
-	By("creating API definition with controller and resource")
-	err = kbc.CreateAPI(
-		"--group", "crew",
-		"--version", "v2",
-		"--kind", "Memcached",
-		"--namespaced",
-		"--resource=true",
-		"--controller=false",
-		"--make=false",
-	)
-	Expect(err).NotTo(HaveOccurred(), "Failed to scaffold API with resource and controller")
-
 	By("creating Webhook for Memcached API")
 	err = kbc.CreateWebhook(
 		"--group", "crew",
@@ -146,7 +131,6 @@ func generateProject(kbc *utils.TestContext) {
 		"--defaulting",
 		"--programmatic-validation",
 		"--conversion",
-		"--spoke", "v2",
 	)
 	Expect(err).NotTo(HaveOccurred(), "Failed to scaffold webhook for Memcached API")
 
@@ -185,16 +169,10 @@ func generateProject(kbc *utils.TestContext) {
 		"--external-api-path=github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1",
 		"--external-api-domain=cert-manager.io",
 	)
-	Expect(err).NotTo(HaveOccurred(), "Failed to scaffold API with external API")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }
 
-func regenerateProject(kbc *utils.TestContext) {
-	By("regenerating the project")
-	err := kbc.Regenerate()
-	Expect(err).NotTo(HaveOccurred(), "Failed to regenerate project")
-}
-
-func regenerateProjectWith(kbc *utils.TestContext, projectOutputDir string) {
+func regenerateProject(kbc *utils.TestContext, projectOutputDir string) {
 	By("regenerating the project")
 	err := kbc.Regenerate(
 		fmt.Sprintf("--input-dir=%s", kbc.Dir),
@@ -203,7 +181,19 @@ func regenerateProjectWith(kbc *utils.TestContext, projectOutputDir string) {
 	Expect(err).NotTo(HaveOccurred(), "Failed to regenerate project")
 }
 
-func generateAPIWithDeployImage(kbc *utils.TestContext) {
+func generateProjectWithGrafanaPlugin(kbc *utils.TestContext) {
+	By("editing project to enable Grafana plugin")
+	err := kbc.Edit("--plugins", "grafana.kubebuilder.io/v1-alpha")
+	Expect(err).NotTo(HaveOccurred(), "Failed to edit project to enable Grafana Plugin")
+}
+
+func generateProjectWithHelmPlugin(kbc *utils.TestContext) {
+	By("editing project to enable Helm plugin")
+	err := kbc.Edit("--plugins", "helm.kubebuilder.io/v1-alpha")
+	Expect(err).NotTo(HaveOccurred(), "Failed to edit project to enable Helm Plugin")
+}
+
+func generateProjectWithDeployImagePlugin(kbc *utils.TestContext) {
 	By("creating an API with DeployImage plugin")
 	err := kbc.CreateAPI(
 		"--group", "crew",
@@ -334,11 +324,11 @@ func validateDeployImagePlugin(projectFile string) {
 	// Validate the resource configuration
 	Expect(deployImageConfig.Resources).ToNot(BeEmpty(), "Expected at least one resource for the DeployImage plugin")
 
-	resourceData := deployImageConfig.Resources[0]
-	Expect(resourceData.Group).To(Equal("crew"), "Expected group to be 'crew'")
-	Expect(resourceData.Kind).To(Equal("Memcached"), "Expected kind to be 'Memcached'")
+	resource := deployImageConfig.Resources[0]
+	Expect(resource.Group).To(Equal("crew"), "Expected group to be 'crew'")
+	Expect(resource.Kind).To(Equal("Memcached"), "Expected kind to be 'Memcached'")
 
-	options := resourceData.Options
+	options := resource.Options
 	Expect(options.Image).To(Equal("memcached:1.6.15-alpine"), "Expected image to match")
 	Expect(options.ContainerCommand).To(Equal("memcached,--memory-limit=64,modern,-v"),
 		"Expected container command to match")

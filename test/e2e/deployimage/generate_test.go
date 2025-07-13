@@ -20,6 +20,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	//nolint:golint
+	// nolint:revive
+	//nolint:golint
+	// nolint:revive
 	"sigs.k8s.io/kubebuilder/v4/test/e2e/utils"
 )
 
@@ -47,7 +51,7 @@ func creatingAPI(kbc *utils.TestContext) {
 		"--make=false",
 		"--manifests=false",
 	)
-	Expect(err).NotTo(HaveOccurred(), "Failed to create API definition")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }
 
 func creatingAPIWithOptions(kbc *utils.TestContext) {
@@ -65,7 +69,7 @@ func creatingAPIWithOptions(kbc *utils.TestContext) {
 		"--make=false",
 		"--manifests=false",
 	)
-	Expect(err).NotTo(HaveOccurred(), "Failed to create API definition with deploy-image/v1-alpha")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }
 
 func initTheProject(kbc *utils.TestContext) {
@@ -75,5 +79,5 @@ func initTheProject(kbc *utils.TestContext) {
 		"--project-version", "3",
 		"--domain", kbc.Domain,
 	)
-	Expect(err).NotTo(HaveOccurred(), "Failed to initialize project")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }

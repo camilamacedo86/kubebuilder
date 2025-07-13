@@ -63,6 +63,7 @@ func (f Kustomization) makeCRFileName() string {
 		return f.Resource.Replacer().Replace("%[group]_%[version]_%[kind].yaml")
 	}
 	return f.Resource.Replacer().Replace("%[version]_%[kind].yaml")
+
 }
 
 // GetCodeFragments implements file.Inserter

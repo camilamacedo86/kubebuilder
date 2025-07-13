@@ -66,10 +66,7 @@
       - [Migration by updating the files](migration/manually_migration_guide_gov3_to_gov4.md)
   - [Single Group to Multi-Group](./migration/multi-group.md)
 
-- [Alpha Commands](./reference/alpha_commands.md)
-
-  - [alpha generate](./reference/commands/alpha_generate.md)
-  - [alpha update](./reference/commands/alpha_update.md)
+- [Project Upgrade Assistant](./reference/rescaffold.md)
 
 ---
 
@@ -123,7 +120,6 @@
     - [go/v4](./plugins/available/go-v4-plugin.md)
     - [grafana/v1-alpha](./plugins/available/grafana-v1-alpha.md)
     - [deploy-image/v1-alpha](./plugins/available/deploy-image-plugin-v1-alpha.md)
-    - [helm/v1-alpha](./plugins/available/helm-v1-alpha.md)
     - [kustomize/v2](./plugins/available/kustomize-v2.md)
   - [Extending](./plugins/extending.md)
     - [CLI and Plugins](./plugins/extending/extending_cli_features_and_plugins.md)

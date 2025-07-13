@@ -22,7 +22,7 @@ import (
 
 const devContainerTemplate = `{
   "name": "Kubebuilder DevContainer",
-  "image": "golang:1.24",
+  "image": "golang:1.22",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/git:1": {}
@@ -72,22 +72,19 @@ go version
 kubectl version --client
 `
 
-var (
-	_ machinery.Template = &DevContainer{}
-	_ machinery.Template = &DevContainerPostInstallScript{}
-)
+var _ machinery.Template = &DevContainer{}
+var _ machinery.Template = &DevContainerPostInstallScript{}
 
-// DevContainer scaffoldds a `devcontainer.json` configurations file for creating Kubebuilder & Kind based DevContainer.
+// DevCotaniner scaffoldds a `devcontainer.json` configurations file for
+// creating Kubebuilder & Kind based DevContainer.
 type DevContainer struct {
 	machinery.TemplateMixin
 }
 
-// DevContainerPostInstallScript defines the scaffold that will be done with the post install script
 type DevContainerPostInstallScript struct {
 	machinery.TemplateMixin
 }
 
-// SetTemplateDefaults set defaults for this template
 func (f *DevContainer) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = ".devcontainer/devcontainer.json"
@@ -98,7 +95,6 @@ func (f *DevContainer) SetTemplateDefaults() error {
 	return nil
 }
 
-// SetTemplateDefaults set the defaults of this template
 func (f *DevContainerPostInstallScript) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = ".devcontainer/post-install.sh"

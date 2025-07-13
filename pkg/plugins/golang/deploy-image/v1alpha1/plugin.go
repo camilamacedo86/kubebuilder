@@ -51,12 +51,10 @@ func (Plugin) SupportedProjectVersions() []config.Version { return supportedProj
 // GetCreateAPISubcommand will return the subcommand which is responsible for scaffolding apis
 func (p Plugin) GetCreateAPISubcommand() plugin.CreateAPISubcommand { return &p.createAPISubcommand }
 
-// PluginConfig defines the structure that will be used to track the data
 type PluginConfig struct {
 	Resources []ResourceData `json:"resources,omitempty"`
 }
 
-// ResourceData store the resource data used in the plugin
 type ResourceData struct {
 	Group   string  `json:"group,omitempty"`
 	Domain  string  `json:"domain,omitempty"`
@@ -72,7 +70,6 @@ type options struct {
 	RunAsUser        string `json:"runAsUser,omitempty"`
 }
 
-// DeprecationWarning define the deprecation message or return empty when plugin is not deprecated
 func (p Plugin) DeprecationWarning() string {
 	return ""
 }

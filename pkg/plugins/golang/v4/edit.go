@@ -61,9 +61,5 @@ func (p *editSubcommand) InjectConfig(c config.Config) error {
 func (p *editSubcommand) Scaffold(fs machinery.Filesystem) error {
 	scaffolder := scaffolds.NewEditScaffolder(p.config, p.multigroup)
 	scaffolder.InjectFS(fs)
-	if err := scaffolder.Scaffold(); err != nil {
-		return fmt.Errorf("failed to edit scaffold: %w", err)
-	}
-
-	return nil
+	return scaffolder.Scaffold()
 }

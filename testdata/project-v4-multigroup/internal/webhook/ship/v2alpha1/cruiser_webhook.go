@@ -53,13 +53,13 @@ func SetupCruiserWebhookWithManager(mgr ctrl.Manager) error {
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 type CruiserCustomValidator struct {
-	// TODO(user): Add more fields as needed for validation
+	//TODO(user): Add more fields as needed for validation
 }
 
 var _ webhook.CustomValidator = &CruiserCustomValidator{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type Cruiser.
-func (v *CruiserCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (v *CruiserCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	cruiser, ok := obj.(*shipv2alpha1.Cruiser)
 	if !ok {
 		return nil, fmt.Errorf("expected a Cruiser object but got %T", obj)
@@ -72,7 +72,7 @@ func (v *CruiserCustomValidator) ValidateCreate(_ context.Context, obj runtime.O
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Cruiser.
-func (v *CruiserCustomValidator) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (v *CruiserCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	cruiser, ok := newObj.(*shipv2alpha1.Cruiser)
 	if !ok {
 		return nil, fmt.Errorf("expected a Cruiser object for the newObj but got %T", newObj)

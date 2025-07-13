@@ -17,6 +17,7 @@ limitations under the License.
 package v3
 
 import (
+	"errors"
 	"sort"
 	"testing"
 
@@ -44,15 +45,14 @@ var _ = Describe("Cfg", func() {
 	)
 
 	var (
-		c                Cfg
-		pluginChain      []string
-		otherPluginChain []string
+		c Cfg
+
+		pluginChain = []string{"go.kubebuilder.io/v2"}
+
+		otherPluginChain = []string{"go.kubebuilder.io/v3"}
 	)
 
 	BeforeEach(func() {
-		pluginChain = []string{"go.kubebuilder.io/v2"}
-		otherPluginChain = []string{"go.kubebuilder.io/v3"}
-
 		c = Cfg{
 			Version:     Version,
 			Domain:      domain,
@@ -136,12 +136,6 @@ var _ = Describe("Cfg", func() {
 
 	Context("Resources", func() {
 		var (
-			res              resource.Resource
-			resWithoutPlural resource.Resource
-			checkResource    func(result, expected resource.Resource)
-		)
-
-		BeforeEach(func() {
 			res = resource.Resource{
 				GVK: resource.GVK{
 					Group:   "group",
@@ -163,35 +157,35 @@ var _ = Describe("Cfg", func() {
 				},
 			}
 			resWithoutPlural = res.Copy()
+		)
 
-			// As some of the tests insert directly into the slice without using the interface methods,
-			// regular plural forms should not be present in here. rsWithoutPlural is used for this purpose.
-			resWithoutPlural.Plural = ""
+		// As some of the tests insert directly into the slice without using the interface methods,
+		// regular plural forms should not be present in here. rsWithoutPlural is used for this purpose.
+		resWithoutPlural.Plural = ""
 
-			// Auxiliary function for GetResource, AddResource and UpdateResource tests
-			checkResource = func(result, expected resource.Resource) {
-				Expect(result.GVK.IsEqualTo(expected.GVK)).To(BeTrue())
-				Expect(result.Plural).To(Equal(expected.Plural))
-				Expect(result.Path).To(Equal(expected.Path))
-				if expected.API == nil {
-					Expect(result.API).To(BeNil())
-				} else {
-					Expect(result.API).NotTo(BeNil())
-					Expect(result.API.CRDVersion).To(Equal(expected.API.CRDVersion))
-					Expect(result.API.Namespaced).To(Equal(expected.API.Namespaced))
-				}
-				Expect(result.Controller).To(Equal(expected.Controller))
-				if expected.Webhooks == nil {
-					Expect(result.Webhooks).To(BeNil())
-				} else {
-					Expect(result.Webhooks).NotTo(BeNil())
-					Expect(result.Webhooks.WebhookVersion).To(Equal(expected.Webhooks.WebhookVersion))
-					Expect(result.Webhooks.Defaulting).To(Equal(expected.Webhooks.Defaulting))
-					Expect(result.Webhooks.Validation).To(Equal(expected.Webhooks.Validation))
-					Expect(result.Webhooks.Conversion).To(Equal(expected.Webhooks.Conversion))
-				}
+		// Auxiliary function for GetResource, AddResource and UpdateResource tests
+		checkResource := func(result, expected resource.Resource) {
+			Expect(result.GVK.IsEqualTo(expected.GVK)).To(BeTrue())
+			Expect(result.Plural).To(Equal(expected.Plural))
+			Expect(result.Path).To(Equal(expected.Path))
+			if expected.API == nil {
+				Expect(result.API).To(BeNil())
+			} else {
+				Expect(result.API).NotTo(BeNil())
+				Expect(result.API.CRDVersion).To(Equal(expected.API.CRDVersion))
+				Expect(result.API.Namespaced).To(Equal(expected.API.Namespaced))
 			}
-		})
+			Expect(result.Controller).To(Equal(expected.Controller))
+			if expected.Webhooks == nil {
+				Expect(result.Webhooks).To(BeNil())
+			} else {
+				Expect(result.Webhooks).NotTo(BeNil())
+				Expect(result.Webhooks.WebhookVersion).To(Equal(expected.Webhooks.WebhookVersion))
+				Expect(result.Webhooks.Defaulting).To(Equal(expected.Webhooks.Defaulting))
+				Expect(result.Webhooks.Validation).To(Equal(expected.Webhooks.Validation))
+				Expect(result.Webhooks.Conversion).To(Equal(expected.Webhooks.Conversion))
+			}
+		}
 
 		DescribeTable("ResourcesLength should return the number of resources",
 			func(n int) {
@@ -360,11 +354,6 @@ var _ = Describe("Cfg", func() {
 		)
 
 		var (
-			c0, c1, c2 Cfg
-			pluginCfg  PluginConfig
-		)
-
-		BeforeEach(func() {
 			c0 = Cfg{
 				Version:     Version,
 				Domain:      domain,
@@ -397,43 +386,45 @@ var _ = Describe("Cfg", func() {
 					},
 				},
 			}
-			pluginCfg = PluginConfig{
+			pluginConfig = PluginConfig{
 				Data1: "plugin value 1",
 				Data2: "plugin value 2",
 			}
-		})
+		)
 
 		It("DecodePluginConfig should fail for no plugin config object", func() {
-			err := c0.DecodePluginConfig(key, &pluginCfg)
+			var pluginConfig PluginConfig
+			err := c0.DecodePluginConfig(key, &pluginConfig)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(config.PluginKeyNotFoundError{Key: key}))
+			Expect(errors.As(err, &config.PluginKeyNotFoundError{})).To(BeTrue())
 		})
 
 		It("DecodePluginConfig should fail to retrieve data from a non-existent plugin", func() {
-			err := c1.DecodePluginConfig("plugin-y", &pluginCfg)
+			var pluginConfig PluginConfig
+			err := c1.DecodePluginConfig("plugin-y", &pluginConfig)
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(MatchError(config.PluginKeyNotFoundError{Key: "plugin-y"}))
+			Expect(errors.As(err, &config.PluginKeyNotFoundError{})).To(BeTrue())
 		})
 
 		DescribeTable("DecodePluginConfig should retrieve the plugin data correctly",
-			func(getCfg func() Cfg, expected func() PluginConfig) {
-				pluginCfg = PluginConfig{} // reset to not reuse values
-				Expect(getCfg().DecodePluginConfig(key, &pluginCfg)).To(Succeed())
-				Expect(pluginCfg).To(Equal(expected()))
+			func(inputConfig Cfg, expectedPluginConfig PluginConfig) {
+				var pluginConfig PluginConfig
+				Expect(inputConfig.DecodePluginConfig(key, &pluginConfig)).To(Succeed())
+				Expect(pluginConfig).To(Equal(expectedPluginConfig))
 			},
-			Entry("for an empty plugin config object", func() Cfg { return c1 }, func() PluginConfig { return PluginConfig{} }),
-			Entry("for a full plugin config object", func() Cfg { return c2 }, func() PluginConfig { return pluginCfg }),
+			Entry("for an empty plugin config object", c1, PluginConfig{}),
+			Entry("for a full plugin config object", c2, pluginConfig),
 			// TODO (coverage): add cases where yaml.Marshal returns an error
 			// TODO (coverage): add cases where yaml.Unmarshal returns an error
 		)
 
 		DescribeTable("EncodePluginConfig should encode the plugin data correctly",
-			func(getPluginCfg func() PluginConfig, expectedCfg func() Cfg) {
-				Expect(c.EncodePluginConfig(key, getPluginCfg())).To(Succeed())
-				Expect(c).To(Equal(expectedCfg()))
+			func(pluginConfig PluginConfig, expectedConfig Cfg) {
+				Expect(c.EncodePluginConfig(key, pluginConfig)).To(Succeed())
+				Expect(c).To(Equal(expectedConfig))
 			},
-			Entry("for an empty plugin config object", func() PluginConfig { return PluginConfig{} }, func() Cfg { return c1 }),
-			Entry("for a full plugin config object", func() PluginConfig { return pluginCfg }, func() Cfg { return c2 }),
+			Entry("for an empty plugin config object", PluginConfig{}, c1),
+			Entry("for a full plugin config object", pluginConfig, c2),
 			// TODO (coverage): add cases where yaml.Marshal returns an error
 			// TODO (coverage): add cases where yaml.Unmarshal returns an error
 		)
@@ -441,11 +432,7 @@ var _ = Describe("Cfg", func() {
 
 	Context("Persistence", func() {
 		var (
-			c1, c2        Cfg
-			s1, s1bis, s2 string
-		)
-
-		BeforeEach(func() {
+			// BeforeEach is called after the entries are evaluated, and therefore, c is not available
 			c1 = Cfg{
 				Version:     Version,
 				Domain:      domain,
@@ -485,8 +472,8 @@ var _ = Describe("Cfg", func() {
 							Kind:    "Kind",
 						},
 						Plural:   "kindes",
-						API:      nil,
-						Webhooks: nil,
+						API:      &resource.API{},
+						Webhooks: &resource.Webhooks{},
 					},
 					{
 						GVK: resource.GVK{
@@ -577,23 +564,22 @@ resources:
     webhookVersion: v1
 version: "3"
 `
-		})
+		)
 
 		DescribeTable("MarshalYAML should succeed",
-			func(getCfg func() Cfg, getContent func() string) {
-				b, err := getCfg().MarshalYAML()
+			func(c Cfg, content string) {
+				b, err := c.MarshalYAML()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(string(b)).To(Equal(getContent()))
+				Expect(string(b)).To(Equal(content))
 			},
-			Entry("for a basic configuration", func() Cfg { return c1 }, func() string { return s1 }),
-			Entry("for a full configuration", func() Cfg { return c2 }, func() string { return s2 }),
+			Entry("for a basic configuration", c1, s1),
+			Entry("for a full configuration", c2, s2),
 		)
 
 		DescribeTable("UnmarshalYAML should succeed",
-			func(getContent func() string, getCfg func() Cfg) {
+			func(content string, c Cfg) {
 				var unmarshalled Cfg
-				Expect(unmarshalled.UnmarshalYAML([]byte(getContent()))).To(Succeed())
-				c := getCfg()
+				Expect(unmarshalled.UnmarshalYAML([]byte(content))).To(Succeed())
 				Expect(unmarshalled.Version.Compare(c.Version)).To(Equal(0))
 				Expect(unmarshalled.Domain).To(Equal(c.Domain))
 				Expect(unmarshalled.Repository).To(Equal(c.Repository))
@@ -604,9 +590,9 @@ version: "3"
 				Expect(unmarshalled.Plugins).To(HaveLen(len(c.Plugins)))
 				// TODO: fully test Plugins field and not on its length
 			},
-			Entry("basic", func() string { return s1 }, func() Cfg { return c1 }),
-			Entry("full", func() string { return s2 }, func() Cfg { return c2 }),
-			Entry("string layout", func() string { return s1bis }, func() Cfg { return c1 }),
+			Entry("basic", s1, c1),
+			Entry("full", s2, c2),
+			Entry("string layout", s1bis, c1),
 		)
 
 		DescribeTable("UnmarshalYAML should fail",

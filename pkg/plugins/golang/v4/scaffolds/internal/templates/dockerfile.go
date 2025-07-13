@@ -27,7 +27,7 @@ type Dockerfile struct {
 	machinery.TemplateMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *Dockerfile) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = "Dockerfile"
@@ -39,7 +39,7 @@ func (f *Dockerfile) SetTemplateDefaults() error {
 }
 
 const dockerfileTemplate = `# Build the manager binary
-FROM golang:1.24 AS builder
+FROM golang:1.22 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 

@@ -29,7 +29,7 @@ type Kustomization struct {
 	machinery.TemplateMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *Kustomization) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join("config", "prometheus", "kustomization.yaml")
@@ -43,7 +43,7 @@ func (f *Kustomization) SetTemplateDefaults() error {
 const kustomizationTemplate = `resources:
 - monitor.yaml
 
-# [PROMETHEUS-WITH-CERTS] The following patch configures the ServiceMonitor in ../prometheus
+# [PROMETHEUS WITH CERTMANAGER] The following patch configures the ServiceMonitor in ../prometheus
 # to securely reference certificates created and managed by cert-manager.
 # Additionally, ensure that you uncomment the [METRICS WITH CERTMANAGER] patch under config/default/kustomization.yaml
 # to mount the "metrics-server-cert" secret in the Manager Deployment.

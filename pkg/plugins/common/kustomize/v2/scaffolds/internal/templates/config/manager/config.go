@@ -33,7 +33,7 @@ type Config struct {
 	Image string
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *Config) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join("config", "manager", "manager.yaml")
@@ -66,7 +66,6 @@ spec:
   selector:
     matchLabels:
       control-plane: controller-manager
-      app.kubernetes.io/name: {{ .ProjectName }}
   replicas: 1
   template:
     metadata:
@@ -74,7 +73,6 @@ spec:
         kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: controller-manager
-        app.kubernetes.io/name: {{ .ProjectName }}
     spec:
       # TODO(user): Uncomment the following code to configure the nodeAffinity expression
       # according to the platforms which are supported by your solution.
@@ -111,9 +109,7 @@ spec:
           - --health-probe-bind-address=:8081
         image: {{ .Image }}
         name: manager
-        ports: []
         securityContext:
-          readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
           capabilities:
             drop:
@@ -139,8 +135,6 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
-        volumeMounts: []
-      volumes: []
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
 `

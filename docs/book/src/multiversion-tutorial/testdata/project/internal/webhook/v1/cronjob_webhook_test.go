@@ -31,13 +31,11 @@ var _ = Describe("CronJob Webhook", func() {
 		validator CronJobCustomValidator
 		defaulter CronJobCustomDefaulter
 	)
-	const validCronJobName = "valid-cronjob-name"
-	const schedule = "*/5 * * * *"
 
 	BeforeEach(func() {
 		obj = &batchv1.CronJob{
 			Spec: batchv1.CronJobSpec{
-				Schedule:                   schedule,
+				Schedule:                   "*/5 * * * *",
 				ConcurrencyPolicy:          batchv1.AllowConcurrent,
 				SuccessfulJobsHistoryLimit: new(int32),
 				FailedJobsHistoryLimit:     new(int32),
@@ -48,7 +46,7 @@ var _ = Describe("CronJob Webhook", func() {
 
 		oldObj = &batchv1.CronJob{
 			Spec: batchv1.CronJobSpec{
-				Schedule:                   schedule,
+				Schedule:                   "*/5 * * * *",
 				ConcurrencyPolicy:          batchv1.AllowConcurrent,
 				SuccessfulJobsHistoryLimit: new(int32),
 				FailedJobsHistoryLimit:     new(int32),
@@ -82,7 +80,7 @@ var _ = Describe("CronJob Webhook", func() {
 			obj.Spec.FailedJobsHistoryLimit = nil     // This should default to 1
 
 			By("calling the Default method to apply defaults")
-			_ = defaulter.Default(ctx, obj)
+			defaulter.Default(ctx, obj)
 
 			By("checking that the default values are set")
 			Expect(obj.Spec.ConcurrencyPolicy).To(Equal(batchv1.AllowConcurrent), "Expected ConcurrencyPolicy to default to AllowConcurrent")
@@ -102,7 +100,7 @@ var _ = Describe("CronJob Webhook", func() {
 			*obj.Spec.FailedJobsHistoryLimit = 2
 
 			By("calling the Default method to apply defaults")
-			_ = defaulter.Default(ctx, obj)
+			defaulter.Default(ctx, obj)
 
 			By("checking that the fields were not overwritten")
 			Expect(obj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent), "Expected ConcurrencyPolicy to retain its set value")
@@ -114,14 +112,14 @@ var _ = Describe("CronJob Webhook", func() {
 
 	Context("When creating or updating CronJob under Validating Webhook", func() {
 		It("Should deny creation if the name is too long", func() {
-			obj.Name = "this-name-is-way-too-long-and-should-fail-validation-because-it-is-way-too-long"
+			obj.ObjectMeta.Name = "this-name-is-way-too-long-and-should-fail-validation-because-it-is-way-too-long"
 			Expect(validator.ValidateCreate(ctx, obj)).Error().To(
 				MatchError(ContainSubstring("must be no more than 52 characters")),
 				"Expected name validation to fail for a too-long name")
 		})
 
 		It("Should admit creation if the name is valid", func() {
-			obj.Name = validCronJobName
+			obj.ObjectMeta.Name = "valid-cronjob-name"
 			Expect(validator.ValidateCreate(ctx, obj)).To(BeNil(),
 				"Expected name validation to pass for a valid name")
 		})
@@ -134,17 +132,17 @@ var _ = Describe("CronJob Webhook", func() {
 		})
 
 		It("Should admit creation if the schedule is valid", func() {
-			obj.Spec.Schedule = schedule
+			obj.Spec.Schedule = "*/5 * * * *"
 			Expect(validator.ValidateCreate(ctx, obj)).To(BeNil(),
 				"Expected spec validation to pass for a valid schedule")
 		})
 
 		It("Should deny update if both name and spec are invalid", func() {
-			oldObj.Name = validCronJobName
-			oldObj.Spec.Schedule = schedule
+			oldObj.ObjectMeta.Name = "valid-cronjob-name"
+			oldObj.Spec.Schedule = "*/5 * * * *"
 
 			By("simulating an update")
-			obj.Name = "this-name-is-way-too-long-and-should-fail-validation-because-it-is-way-too-long"
+			obj.ObjectMeta.Name = "this-name-is-way-too-long-and-should-fail-validation-because-it-is-way-too-long"
 			obj.Spec.Schedule = "invalid-cron-schedule"
 
 			By("validating an update")
@@ -153,27 +151,17 @@ var _ = Describe("CronJob Webhook", func() {
 		})
 
 		It("Should admit update if both name and spec are valid", func() {
-			oldObj.Name = validCronJobName
-			oldObj.Spec.Schedule = schedule
+			oldObj.ObjectMeta.Name = "valid-cronjob-name"
+			oldObj.Spec.Schedule = "*/5 * * * *"
 
 			By("simulating an update")
-			obj.Name = "valid-cronjob-name-updated"
+			obj.ObjectMeta.Name = "valid-cronjob-name-updated"
 			obj.Spec.Schedule = "0 0 * * *"
 
 			By("validating an update")
 			Expect(validator.ValidateUpdate(ctx, oldObj, obj)).To(BeNil(),
 				"Expected validation to pass for a valid update")
 		})
-	})
-
-	Context("When creating CronJob under Conversion Webhook", func() {
-		// TODO (user): Add logic to convert the object to the desired version and verify the conversion
-		// Example:
-		// It("Should convert the object correctly", func() {
-		//     convertedObj := &batchv1.CronJob{}
-		//     Expect(obj.ConvertTo(convertedObj)).To(Succeed())
-		//     Expect(convertedObj).ToNot(BeNil())
-		// })
 	})
 
 })

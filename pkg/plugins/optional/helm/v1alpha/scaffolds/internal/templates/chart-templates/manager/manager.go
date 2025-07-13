@@ -22,12 +22,11 @@ import (
 	"sigs.k8s.io/kubebuilder/v4/pkg/machinery"
 )
 
-var _ machinery.Template = &Deployment{}
+var _ machinery.Template = &ManagerDeployment{}
 
-// Deployment scaffolds the manager Deployment for the Helm chart
-type Deployment struct {
+// ManagerDeployment scaffolds the manager Deployment for the Helm chart
+type ManagerDeployment struct {
 	machinery.TemplateMixin
-	machinery.ProjectNameMixin
 
 	// DeployImages if true will scaffold the env with the images
 	DeployImages bool
@@ -38,7 +37,7 @@ type Deployment struct {
 }
 
 // SetTemplateDefaults sets the default template configuration
-func (f *Deployment) SetTemplateDefaults() error {
+func (f *ManagerDeployment) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join("dist", "chart", "templates", "manager", "manager.yaml")
 	}
@@ -54,17 +53,16 @@ func (f *Deployment) SetTemplateDefaults() error {
 	return nil
 }
 
-//nolint:lll
+// nolint:lll
 const managerDeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .ProjectName }}-controller-manager
+  name: controller-manager
   namespace: {{ "{{ .Release.Namespace }}" }}
   labels:
     {{ "{{- include \"chart.labels\" . | nindent 4 }}" }}
     control-plane: controller-manager
 spec:
-  replicas:  {{ "{{ .Values.controllerManager.replicas }}" }}
   selector:
     matchLabels:
       {{ "{{- include \"chart.selectorLabels\" . | nindent 6 }}" }}
@@ -76,11 +74,6 @@ spec:
       labels:
         {{ "{{- include \"chart.labels\" . | nindent 8 }}" }}
         control-plane: controller-manager
-        {{ "{{- if and .Values.controllerManager.pod .Values.controllerManager.pod.labels }}" }}
-        {{ "{{- range $key, $value := .Values.controllerManager.pod.labels }}" }}
-        {{ "{{ $key }}" }}: {{ "{{ $value }}" }}
-        {{ "{{- end }}" }}
-        {{ "{{- end }}" }}
     spec:
       containers:
         - name: manager
@@ -91,13 +84,13 @@ spec:
           command:
             - /manager
           image: {{ "{{ .Values.controllerManager.container.image.repository }}" }}:{{ "{{ .Values.controllerManager.container.image.tag }}" }}
-          {{ "{{- if .Values.controllerManager.container.env }}" }}
+{{- if .DeployImages }}
           env:
             {{ "{{- range $key, $value := .Values.controllerManager.container.env }}" }}
             - name: {{ "{{ $key }}" }}
               value: {{ "{{ $value }}" }}
             {{ "{{- end }}" }}
-          {{ "{{- end }}" }}
+{{- end }}
           livenessProbe:
             {{ "{{- toYaml .Values.controllerManager.container.livenessProbe | nindent 12 }}" }}
           readinessProbe:
@@ -114,11 +107,7 @@ spec:
             {{ "{{- toYaml .Values.controllerManager.container.resources | nindent 12 }}" }}
           securityContext:
             {{ "{{- toYaml .Values.controllerManager.container.securityContext | nindent 12 }}" }}
-{{- if .HasWebhooks }}
           {{ "{{- if and .Values.certmanager.enable (or .Values.webhook.enable .Values.metrics.enable) }}" }}
-{{- else }}
-          {{ "{{- if and .Values.certmanager.enable .Values.metrics.enable }}" }}
-{{- end }}
           volumeMounts:
 {{- if .HasWebhooks }}
             {{ "{{- if and .Values.webhook.enable .Values.certmanager.enable }}" }}
@@ -137,11 +126,7 @@ spec:
         {{ "{{- toYaml .Values.controllerManager.securityContext | nindent 8 }}" }}
       serviceAccountName: {{ "{{ .Values.controllerManager.serviceAccountName }}" }}
       terminationGracePeriodSeconds: {{ "{{ .Values.controllerManager.terminationGracePeriodSeconds }}" }}
-{{- if .HasWebhooks }}
       {{ "{{- if and .Values.certmanager.enable (or .Values.webhook.enable .Values.metrics.enable) }}" }}
-{{- else }}
-      {{ "{{- if and .Values.certmanager.enable .Values.metrics.enable }}" }}
-{{- end }}
       volumes:
 {{- if .HasWebhooks }}
         {{ "{{- if and .Values.webhook.enable .Values.certmanager.enable }}" }}

@@ -27,12 +27,6 @@ type Config interface {
 	// GetVersion returns the current project version.
 	GetVersion() Version
 
-	// GetCliVersion returns the CLI binary version that was used to scaffold or initialize the project.
-	GetCliVersion() string
-
-	// SetCliVersion sets the binary version used to initialize the project.
-	SetCliVersion(version string) error
-
 	/* String fields */
 
 	// GetDomain returns the project domain.
@@ -101,8 +95,8 @@ type Config interface {
 
 	/* Persistence */
 
-	// MarshalYAML Marshal returns the YAML representation of the Config.
+	// Marshal returns the YAML representation of the Config.
 	MarshalYAML() ([]byte, error)
-	// UnmarshalYAML Unmarshal loads the Config fields from its YAML representation.
+	// Unmarshal loads the Config fields from its YAML representation.
 	UnmarshalYAML([]byte) error
 }

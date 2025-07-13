@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//nolint:dupl
 package v1alpha
 
 import (
@@ -33,11 +32,11 @@ type initSubcommand struct {
 }
 
 func (p *initSubcommand) UpdateMetadata(cliMeta plugin.CLIMetadata, subcmdMeta *plugin.SubcommandMetadata) {
-	subcmdMeta.Description = metaDataDescription
+	subcmdMeta.Description = MetaDataDescription
 
 	subcmdMeta.Examples = fmt.Sprintf(`  # Initialize a common project with this plugin
-  %[1]s init --plugins=%[2]s
-`, cliMeta.CommandName, pluginKey)
+  %[1]s init --plugins=grafana.kubebuilder.io/v1-alpha
+`, cliMeta.CommandName)
 }
 
 func (p *initSubcommand) InjectConfig(c config.Config) error {
@@ -47,14 +46,10 @@ func (p *initSubcommand) InjectConfig(c config.Config) error {
 
 func (p *initSubcommand) Scaffold(fs machinery.Filesystem) error {
 	if err := InsertPluginMetaToConfig(p.config, pluginConfig{}); err != nil {
-		return fmt.Errorf("error inserting project plugin meta to configuration: %w", err)
+		return err
 	}
 
 	scaffolder := scaffolds.NewInitScaffolder()
 	scaffolder.InjectFS(fs)
-	if err := scaffolder.Scaffold(); err != nil {
-		return fmt.Errorf("error scaffolding init subcommand: %w", err)
-	}
-
-	return nil
+	return scaffolder.Scaffold()
 }

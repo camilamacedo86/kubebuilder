@@ -9,29 +9,12 @@ Installing the binaries is as a simple as running `make envtest`. `envtest` will
 by default. `make test` is the one-stop shop for downloading the binaries, setting up the test environment, and running the tests.
 
 
-You can refer to the Makefile of the Kubebuilder scaffold and observe that the envtest setup is consistently aligned across all controller-runtime releases.Starting from `release-0.19`, it is configured to automatically download the artefact from the correct location, **ensuring that kubebuilder users are not impacted.**
+You can refer to the Makefile of the Kubebuilder scaffold and observe that the envtest setup is consistently aligned across all controller-runtime releases. Starting from `release-0.19`, it is configured to automatically download the artefact from the correct location, **ensuring that kubebuilder users are not impacted.**
 
 ```shell
-## Tool Binaries
-..
-ENVTEST ?= $(LOCALBIN)/setup-envtest
+ENVTEST_K8S_VERSION = 1.31.0
+ENVTEST_VERSION ?= release-0.19
 ...
-
-## Tool Versions
-...
-#ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
-ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
-#ENVTEST_K8S_VERSION is the version of Kubernetes to use for setting up ENVTEST binaries (i.e. 1.31)
-ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
-...
-.PHONY: setup-envtest
-setup-envtest: envtest ## Download the binaries required for ENVTEST in the local bin directory.
-	@echo "Setting up envtest binaries for Kubernetes version $(ENVTEST_K8S_VERSION)..."
-	@$(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path || { \
-		echo "Error: Failed to set up envtest binaries for version $(ENVTEST_K8S_VERSION)."; \
-		exit 1; \
-	}
-
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
 $(ENVTEST): $(LOCALBIN)
@@ -100,7 +83,7 @@ Logs from the test runs are prefixed with `test-env`.
 
 You can use the plugin [DeployImage](../plugins/available/deploy-image-plugin-v1-alpha.md) to check examples. This plugin allows users to scaffold API/Controllers to deploy and manage an Operand (image) on the cluster following the guidelines and best practices. It abstracts the complexities of achieving this goal while allowing users to customize the generated code.
 
-Therefore, you can check that a test using ENV TEST will be generated for the controller which has the purpose to ensure that the Deployment is created successfully. You can see an example of its code implementation under the `testdata` directory with the [DeployImage](../plugins/available/deploy-image-plugin-v1-alpha.md) [samples here](https://github.com/kubernetes-sigs/kubebuilder/blob/v4.6.0/testdata/project-v4-with-plugins/internal/controller/busybox_controller_test.go).
+Therefore, you can check that a test using ENV TEST will be generated for the controller which has the purpose to ensure that the Deployment is created successfully. You can see an example of its code implementation under the `testdata` directory with the [DeployImage](../plugins/available/deploy-image-plugin-v1-alpha.md) samples [here](https://github.com/kubernetes-sigs/kubebuilder/blob/v3.7.0/testdata/project-v4-with-plugins/controllers/busybox_controller_test.go).
 
 </aside>
 

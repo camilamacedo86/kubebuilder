@@ -30,7 +30,7 @@ type KustomizeConfig struct {
 	machinery.ResourceMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *KustomizeConfig) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join("config", "crd", "kustomizeconfig.yaml")

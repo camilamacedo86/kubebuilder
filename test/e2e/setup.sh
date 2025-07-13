@@ -39,6 +39,8 @@ function create_cluster {
     fi
     echo "Creating cluster..."
     kind create cluster -v 4 --name $KIND_CLUSTER --retain --wait=1m --config ${kind_config} --image=kindest/node:$1
+    echo "Installing Calico..."
+    kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
   fi
 }
 
@@ -64,6 +66,8 @@ function test_cluster {
   docker pull busybox:1.36.1
   kind load docker-image --name $KIND_CLUSTER busybox:1.36.1
 
+  go test $(dirname "$0")/grafana $flags -timeout 30m
   go test $(dirname "$0")/deployimage $flags -timeout 30m
   go test $(dirname "$0")/v4 $flags -timeout 30m
+  go test $(dirname "$0")/alphagenerate $flags -timeout 30m
 }

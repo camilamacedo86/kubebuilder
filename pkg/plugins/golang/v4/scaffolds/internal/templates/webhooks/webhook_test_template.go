@@ -29,7 +29,7 @@ import (
 var _ machinery.Template = &WebhookTest{}
 
 // WebhookTest scaffolds the file that sets up the webhook unit tests
-type WebhookTest struct {
+type WebhookTest struct { // nolint:maligned
 	machinery.TemplateMixin
 	machinery.MultiGroupMixin
 	machinery.BoilerplateMixin
@@ -44,20 +44,20 @@ type WebhookTest struct {
 	IsLegacyPath bool
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *WebhookTest) SetTemplateDefaults() error {
 	if f.Path == "" {
 		// Deprecated: Remove me when remove go/v4
-		const baseDir = "api"
-		pathAPI := baseDir
+		// nolint:goconst
+		baseDir := "api"
 		if !f.IsLegacyPath {
-			pathAPI = filepath.Join("internal", "webhook")
+			baseDir = filepath.Join("internal", "webhook")
 		}
 
 		if f.MultiGroup && f.Resource.Group != "" {
-			f.Path = filepath.Join(pathAPI, "%[group]", "%[version]", "%[kind]_webhook_test.go")
+			f.Path = filepath.Join(baseDir, "%[group]", "%[version]", "%[kind]_webhook_test.go")
 		} else {
-			f.Path = filepath.Join(pathAPI, "%[version]", "%[kind]_webhook_test.go")
+			f.Path = filepath.Join(baseDir, "%[version]", "%[kind]_webhook_test.go")
 		}
 	}
 	f.Path = f.Resource.Replacer().Replace(f.Path)

@@ -56,7 +56,7 @@ type DeploymentCustomDefaulter struct {
 var _ webhook.CustomDefaulter = &DeploymentCustomDefaulter{}
 
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind Deployment.
-func (d *DeploymentCustomDefaulter) Default(_ context.Context, obj runtime.Object) error {
+func (d *DeploymentCustomDefaulter) Default(ctx context.Context, obj runtime.Object) error {
 	deployment, ok := obj.(*appsv1.Deployment)
 
 	if !ok {
@@ -80,13 +80,13 @@ func (d *DeploymentCustomDefaulter) Default(_ context.Context, obj runtime.Objec
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 type DeploymentCustomValidator struct {
-	// TODO(user): Add more fields as needed for validation
+	//TODO(user): Add more fields as needed for validation
 }
 
 var _ webhook.CustomValidator = &DeploymentCustomValidator{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type Deployment.
-func (v *DeploymentCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (v *DeploymentCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	deployment, ok := obj.(*appsv1.Deployment)
 	if !ok {
 		return nil, fmt.Errorf("expected a Deployment object but got %T", obj)
@@ -99,7 +99,7 @@ func (v *DeploymentCustomValidator) ValidateCreate(_ context.Context, obj runtim
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Deployment.
-func (v *DeploymentCustomValidator) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (v *DeploymentCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	deployment, ok := newObj.(*appsv1.Deployment)
 	if !ok {
 		return nil, fmt.Errorf("expected a Deployment object for the newObj but got %T", newObj)

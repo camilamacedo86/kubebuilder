@@ -116,6 +116,7 @@ func (p *createAPISubcommand) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&p.options.ExternalAPIDomain, "external-api-domain", "",
 		"Specify the domain name for the external API. This domain is used to generate accurate RBAC "+
 			"markers and permissions for the external resources (e.g., cert-manager.io).")
+
 }
 
 func (p *createAPISubcommand) InjectConfig(c config.Config) error {
@@ -139,16 +140,16 @@ func (p *createAPISubcommand) InjectResource(res *resource.Resource) error {
 	// Ensure that external API options cannot be used when creating an API in the project.
 	if p.options.DoAPI {
 		if len(p.options.ExternalAPIPath) != 0 || len(p.options.ExternalAPIDomain) != 0 {
-			return errors.New("cannot use '--external-api-path' or '--external-api-domain' " +
+			return errors.New("Cannot use '--external-api-path' or '--external-api-domain' " +
 				"when creating an API in the project with '--resource=true'. " +
-				"Use '--resource=false' when referencing an external API")
+				"Use '--resource=false' when referencing an external API.")
 		}
 	}
 
 	p.options.UpdateResource(p.resource, p.config)
 
 	if err := p.resource.Validate(); err != nil {
-		return fmt.Errorf("error validating resource: %w", err)
+		return err
 	}
 
 	// In case we want to scaffold a resource API we need to do some checks
@@ -180,22 +181,18 @@ func (p *createAPISubcommand) PreScaffold(machinery.Filesystem) error {
 func (p *createAPISubcommand) Scaffold(fs machinery.Filesystem) error {
 	scaffolder := scaffolds.NewAPIScaffolder(p.config, *p.resource, p.force)
 	scaffolder.InjectFS(fs)
-	if err := scaffolder.Scaffold(); err != nil {
-		return fmt.Errorf("error scaffolding API: %w", err)
-	}
-
-	return nil
+	return scaffolder.Scaffold()
 }
 
 func (p *createAPISubcommand) PostScaffold() error {
 	err := util.RunCmd("Update dependencies", "go", "mod", "tidy")
 	if err != nil {
-		return fmt.Errorf("error updating go dependencies: %w", err)
+		return err
 	}
 	if p.runMake && p.resource.HasAPI() {
 		err = util.RunCmd("Running make", "make", "generate")
 		if err != nil {
-			return fmt.Errorf("error running make generate: %w", err)
+			return err
 		}
 		fmt.Print("Next: implement your new API and generate the manifests (e.g. CRDs,CRs) with:\n$ make manifests\n")
 	}

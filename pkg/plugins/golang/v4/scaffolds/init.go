@@ -17,7 +17,6 @@ limitations under the License.
 package scaffolds
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -37,12 +36,12 @@ import (
 )
 
 const (
-	// GolangciLintVersion is the golangci-lint version to be used in the project
-	GolangciLintVersion = "v2.1.6"
 	// ControllerRuntimeVersion is the kubernetes-sigs/controller-runtime version to be used in the project
-	ControllerRuntimeVersion = "v0.21.0"
+	ControllerRuntimeVersion = "v0.19.1"
 	// ControllerToolsVersion is the kubernetes-sigs/controller-tools version to be used in the project
-	ControllerToolsVersion = "v0.18.0"
+	ControllerToolsVersion = "v0.16.5"
+	// EnvtestK8SVersion is the k8s version used to do the scaffold
+	EnvtestK8SVersion = "1.31.0"
 
 	imageName = "controller:latest"
 )
@@ -63,9 +62,9 @@ type initScaffolder struct {
 }
 
 // NewInitScaffolder returns a new Scaffolder for project initialization operations
-func NewInitScaffolder(cfg config.Config, license, owner, commandName string) plugins.Scaffolder {
+func NewInitScaffolder(config config.Config, license, owner, commandName string) plugins.Scaffolder {
 	return &initScaffolder{
-		config:          cfg,
+		config:          config,
 		boilerplatePath: hack.DefaultBoilerplatePath,
 		license:         license,
 		owner:           owner,
@@ -110,20 +109,12 @@ func (s *initScaffolder) Scaffold() error {
 		}
 		bpFile.Path = s.boilerplatePath
 		if err := scaffold.Execute(bpFile); err != nil {
-			return fmt.Errorf("failed to execute boilerplate: %w", err)
+			return err
 		}
 
 		boilerplate, err := afero.ReadFile(s.fs.FS, s.boilerplatePath)
 		if err != nil {
-			if errors.Is(err, afero.ErrFileNotFound) {
-				log.Warnf("Unable to find %s: %s.\n"+"This file is used to generate the license header in the project.\n"+
-					"Note that controller-gen will also use this. Therefore, ensure that you "+
-					"add the license file or configure your project accordingly.",
-					s.boilerplatePath, err)
-				boilerplate = []byte("")
-			} else {
-				return fmt.Errorf("unable to load boilerplate: %w", err)
-			}
+			return err
 		}
 		// Initialize the machinery.Scaffold that will write the files to disk
 		scaffold = machinery.NewScaffold(s.fs,
@@ -152,7 +143,7 @@ func (s *initScaffolder) Scaffold() error {
 		}
 	}
 
-	err := scaffold.Execute(
+	return scaffold.Execute(
 		&cmd.Main{
 			ControllerRuntimeVersion: ControllerRuntimeVersion,
 		},
@@ -165,7 +156,6 @@ func (s *initScaffolder) Scaffold() error {
 			BoilerplatePath:          s.boilerplatePath,
 			ControllerToolsVersion:   ControllerToolsVersion,
 			KustomizeVersion:         kustomizeVersion,
-			GolangciLintVersion:      GolangciLintVersion,
 			ControllerRuntimeVersion: ControllerRuntimeVersion,
 			EnvtestVersion:           getControllerRuntimeReleaseBranch(),
 		},
@@ -178,16 +168,9 @@ func (s *initScaffolder) Scaffold() error {
 		&e2e.SuiteTest{},
 		&github.E2eTestCi{},
 		&github.TestCi{},
-		&github.LintCi{
-			GolangciLintVersion: GolangciLintVersion,
-		},
+		&github.LintCi{},
 		&utils.Utils{},
 		&templates.DevContainer{},
 		&templates.DevContainerPostInstallScript{},
 	)
-	if err != nil {
-		return fmt.Errorf("failed to execute init scaffold: %w", err)
-	}
-
-	return nil
 }

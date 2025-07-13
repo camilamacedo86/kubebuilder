@@ -50,18 +50,18 @@ func (v *Version) Parse(version string) error {
 
 	var err error
 	if v.Number, err = strconv.Atoi(substrings[0]); err != nil {
-		// Let's check if the `-` belonged to a negative number
-		if n, errParse := strconv.Atoi(version); errParse == nil && n < 0 {
+		// Lets check if the `-` belonged to a negative number
+		if n, err := strconv.Atoi(version); err == nil && n < 0 {
 			return errNonPositive
 		}
-		return fmt.Errorf("failed to convert version number %q: %w", substrings[0], err)
+		return err
 	} else if v.Number == 0 {
 		return errNonPositive
 	}
 
 	if len(substrings) > 1 {
 		if err = v.Stage.Parse(substrings[1]); err != nil {
-			return fmt.Errorf("failed to parse stage: %w", err)
+			return err
 		}
 	}
 
@@ -83,11 +83,7 @@ func (v Version) Validate() error {
 		return errNonPositive
 	}
 
-	if err := v.Stage.Validate(); err != nil {
-		return fmt.Errorf("failed to validate stage: %w", err)
-	}
-
-	return nil
+	return v.Stage.Validate()
 }
 
 // Compare returns -1 if v < other, 0 if v == other, and 1 if v > other.
@@ -109,22 +105,17 @@ func (v Version) IsStable() bool {
 // MarshalJSON implements json.Marshaller
 func (v Version) MarshalJSON() ([]byte, error) {
 	if err := v.Validate(); err != nil {
-		return []byte{}, fmt.Errorf("failed to validate version: %w", err)
+		return []byte{}, err
 	}
 
-	marshaled, err := json.Marshal(v.String())
-	if err != nil {
-		return []byte{}, fmt.Errorf("failed to marshal version: %w", err)
-	}
-
-	return marshaled, nil
+	return json.Marshal(v.String())
 }
 
 // UnmarshalJSON implements json.Unmarshaller
 func (v *Version) UnmarshalJSON(b []byte) error {
 	var str string
 	if err := json.Unmarshal(b, &str); err != nil {
-		return fmt.Errorf("failed to unmarshal version: %w", err)
+		return err
 	}
 
 	return v.Parse(str)

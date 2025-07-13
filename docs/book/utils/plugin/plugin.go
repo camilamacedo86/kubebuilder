@@ -64,9 +64,7 @@ func Run(plug Plugin, inputRaw io.Reader, outputRaw io.Writer, args ...string) e
 		return fmt.Errorf("unable to write output book object: %v", err)
 	}
 
-	if err = os.WriteFile("/tmp/litout.json", out, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to write output book object: %v", err)
-	}
+	os.WriteFile("/tmp/litout.json", out, os.ModePerm)
 
 	return nil
 }

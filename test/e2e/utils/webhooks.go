@@ -25,10 +25,11 @@ import (
 
 // ImplementWebhooks will mock an webhook data
 func ImplementWebhooks(filename, lowerKind string) error {
-	//nolint:gosec // false positive
+	// false positive
+	// nolint:gosec
 	bs, err := os.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("error reading webhooks file %q: %w", filename, err)
+		return err
 	}
 	str := string(bs)
 
@@ -38,7 +39,7 @@ func ImplementWebhooks(filename, lowerKind string) error {
 		`import (
 	"errors"`)
 	if err != nil {
-		return fmt.Errorf("error replacing imports in webhooks file %q: %w", filename, err)
+		return err
 	}
 
 	// implement defaulting webhook logic
@@ -51,7 +52,7 @@ func ImplementWebhooks(filename, lowerKind string) error {
 		replace,
 	)
 	if err != nil {
-		return fmt.Errorf("error replacing default logic in webhooks file %q: %w", filename, err)
+		return err
 	}
 
 	// implement validation webhook logic
@@ -62,7 +63,7 @@ func ImplementWebhooks(filename, lowerKind string) error {
 		return nil, errors.New(".spec.count must >= 0")
 	}`, lowerKind))
 	if err != nil {
-		return fmt.Errorf("error replacing validation logic in webhooks file %q: %w", filename, err)
+		return err
 	}
 	str, err = util.EnsureExistAndReplace(
 		str,
@@ -71,12 +72,9 @@ func ImplementWebhooks(filename, lowerKind string) error {
 		return nil, errors.New(".spec.count must >= 0")
 	}`, lowerKind))
 	if err != nil {
-		return fmt.Errorf("error replacing validation logic in webhooks file %q: %w", filename, err)
+		return err
 	}
-	//nolint:gosec // false positive
-	if writeFileErr := os.WriteFile(filename, []byte(str), 0o644); writeFileErr != nil {
-		return fmt.Errorf("error writing webhooks file %q: %w", filename, writeFileErr)
-	}
-
-	return nil
+	// false positive
+	// nolint:gosec
+	return os.WriteFile(filename, []byte(str), 0644)
 }

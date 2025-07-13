@@ -28,20 +28,15 @@ var _ machinery.Template = &TestCi{}
 type LintCi struct {
 	machinery.TemplateMixin
 	machinery.BoilerplateMixin
-
-	// golangci-lint version to use in the project
-	GolangciLintVersion string
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *LintCi) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join(".github", "workflows", "lint.yml")
 	}
 
 	f.TemplateBody = lintCiTemplate
-
-	f.IfExistsAction = machinery.SkipFile
 
 	return nil
 }
@@ -63,10 +58,10 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: '~1.22'
 
       - name: Run linter
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v6
         with:
-          version: {{ .GolangciLintVersion }}
+          version: v1.61
 `

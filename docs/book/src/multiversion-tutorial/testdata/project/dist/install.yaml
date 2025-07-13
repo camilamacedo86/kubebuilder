@@ -12,7 +12,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: project-system/project-serving-cert
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: cronjobs.batch.tutorial.kubebuilder.io
 spec:
   conversion:
@@ -859,8 +859,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -1571,8 +1569,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -2297,8 +2293,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -2803,39 +2797,6 @@ spec:
                                 x-kubernetes-list-map-keys:
                                 - name
                                 x-kubernetes-list-type: map
-                              resources:
-                                properties:
-                                  claims:
-                                    items:
-                                      properties:
-                                        name:
-                                          type: string
-                                        request:
-                                          type: string
-                                      required:
-                                      - name
-                                      type: object
-                                    type: array
-                                    x-kubernetes-list-map-keys:
-                                    - name
-                                    x-kubernetes-list-type: map
-                                  limits:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    type: object
-                                  requests:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    type: object
-                                type: object
                               restartPolicy:
                                 type: string
                               runtimeClassName:
@@ -2878,8 +2839,6 @@ spec:
                                   runAsUser:
                                     format: int64
                                     type: integer
-                                  seLinuxChangePolicy:
-                                    type: string
                                   seLinuxOptions:
                                     properties:
                                       level:
@@ -3859,8 +3818,6 @@ spec:
                 format: date-time
                 type: string
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true
@@ -4692,8 +4649,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -5404,8 +5359,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -6130,8 +6083,6 @@ spec:
                                               - port
                                               type: object
                                           type: object
-                                        stopSignal:
-                                          type: string
                                       type: object
                                     livenessProbe:
                                       properties:
@@ -6636,39 +6587,6 @@ spec:
                                 x-kubernetes-list-map-keys:
                                 - name
                                 x-kubernetes-list-type: map
-                              resources:
-                                properties:
-                                  claims:
-                                    items:
-                                      properties:
-                                        name:
-                                          type: string
-                                        request:
-                                          type: string
-                                      required:
-                                      - name
-                                      type: object
-                                    type: array
-                                    x-kubernetes-list-map-keys:
-                                    - name
-                                    x-kubernetes-list-type: map
-                                  limits:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    type: object
-                                  requests:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    type: object
-                                type: object
                               restartPolicy:
                                 type: string
                               runtimeClassName:
@@ -6711,8 +6629,6 @@ spec:
                                   runAsUser:
                                     format: int64
                                     type: integer
-                                  seLinuxChangePolicy:
-                                    type: string
                                   seLinuxOptions:
                                     properties:
                                       level:
@@ -7702,8 +7618,6 @@ spec:
                 format: date-time
                 type: string
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: false
@@ -7971,7 +7885,6 @@ spec:
     protocol: TCP
     targetPort: 8443
   selector:
-    app.kubernetes.io/name: project
     control-plane: controller-manager
 ---
 apiVersion: v1
@@ -7988,7 +7901,6 @@ spec:
     protocol: TCP
     targetPort: 9443
   selector:
-    app.kubernetes.io/name: project
     control-plane: controller-manager
 ---
 apiVersion: apps/v1
@@ -8004,14 +7916,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: project
       control-plane: controller-manager
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        app.kubernetes.io/name: project
         control-plane: controller-manager
     spec:
       containers:
@@ -8019,8 +7929,6 @@ spec:
         - --metrics-bind-address=:8443
         - --leader-elect
         - --health-probe-bind-address=:8081
-        - --metrics-cert-path=/tmp/k8s-metrics-server/metrics-certs
-        - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         command:
         - /manager
         image: controller:latest
@@ -8053,13 +7961,12 @@ spec:
           capabilities:
             drop:
             - ALL
-          readOnlyRootFilesystem: true
         volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
         - mountPath: /tmp/k8s-metrics-server/metrics-certs
           name: metrics-certs
-          readOnly: true
-        - mountPath: /tmp/k8s-webhook-server/serving-certs
-          name: webhook-certs
           readOnly: true
       securityContext:
         runAsNonRoot: true
@@ -8068,33 +7975,30 @@ spec:
       serviceAccountName: project-controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-cert
       - name: metrics-certs
         secret:
-          items:
-          - key: ca.crt
-            path: ca.crt
-          - key: tls.crt
-            path: tls.crt
-          - key: tls.key
-            path: tls.key
-          optional: false
           secretName: metrics-server-cert
-      - name: webhook-certs
-        secret:
-          secretName: webhook-server-cert
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   labels:
+    app.kubernetes.io/component: certificate
+    app.kubernetes.io/created-by: project
+    app.kubernetes.io/instance: metrics-certs
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: project
+    app.kubernetes.io/name: certificate
+    app.kubernetes.io/part-of: project
   name: project-metrics-certs
   namespace: project-system
 spec:
   dnsNames:
-  - project-controller-manager-metrics-service.project-system.svc
-  - project-controller-manager-metrics-service.project-system.svc.cluster.local
+  - project-webhook-service.project-system.svc
+  - project-webhook-service.project-system.svc.cluster.local
   issuerRef:
     kind: Issuer
     name: project-selfsigned-issuer
@@ -8104,8 +8008,12 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   labels:
+    app.kubernetes.io/component: certificate
+    app.kubernetes.io/created-by: project
+    app.kubernetes.io/instance: serving-cert
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: project
+    app.kubernetes.io/name: certificate
+    app.kubernetes.io/part-of: project
   name: project-serving-cert
   namespace: project-system
 spec:
@@ -8139,11 +8047,7 @@ metadata:
   namespace: project-system
 spec:
   endpoints:
-  - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-    path: /metrics
-    port: https
-    scheme: https
-    tlsConfig:
+  - tlsConfig:
       ca:
         secret:
           key: ca.crt
@@ -8156,10 +8060,8 @@ spec:
       keySecret:
         key: tls.key
         name: metrics-server-cert
-      serverName: project-controller-manager-metrics-service.project-system.svc
   selector:
     matchLabels:
-      app.kubernetes.io/name: project
       control-plane: controller-manager
 ---
 apiVersion: admissionregistration.k8s.io/v1

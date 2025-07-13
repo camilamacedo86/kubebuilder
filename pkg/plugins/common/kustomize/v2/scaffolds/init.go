@@ -17,8 +17,6 @@ limitations under the License.
 package scaffolds
 
 import (
-	"fmt"
-
 	log "github.com/sirupsen/logrus"
 
 	"sigs.k8s.io/kubebuilder/v4/pkg/config"
@@ -26,7 +24,7 @@ import (
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugins"
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/kdefault"
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/manager"
-	networkpolicy "sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/network-policy"
+	network_policy "sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/network-policy"
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/prometheus"
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/rbac"
 )
@@ -45,9 +43,9 @@ type initScaffolder struct {
 }
 
 // NewInitScaffolder returns a new Scaffolder for project initialization operations
-func NewInitScaffolder(cfg config.Config) plugins.Scaffolder {
+func NewInitScaffolder(config config.Config) plugins.Scaffolder {
 	return &initScaffolder{
-		config: cfg,
+		config: config,
 	}
 }
 
@@ -83,16 +81,12 @@ func (s *initScaffolder) Scaffold() error {
 		&kdefault.CertManagerMetricsPatch{},
 		&manager.Config{Image: imageName},
 		&kdefault.Kustomization{},
-		&networkpolicy.Kustomization{},
-		&networkpolicy.PolicyAllowMetrics{},
+		&network_policy.Kustomization{},
+		&network_policy.NetworkPolicyAllowMetrics{},
 		&prometheus.Kustomization{},
 		&prometheus.Monitor{},
 		&prometheus.ServiceMonitorPatch{},
 	}
 
-	if err := scaffold.Execute(templates...); err != nil {
-		return fmt.Errorf("failed to scaffold kustomize manifests: %w", err)
-	}
-
-	return nil
+	return scaffold.Execute(templates...)
 }

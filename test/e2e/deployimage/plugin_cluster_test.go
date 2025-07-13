@@ -93,15 +93,12 @@ func Run(kbc *utils.TestContext) {
 
 	By("deploying the controller-manager")
 	cmd := exec.Command("make", "deploy", "IMG="+kbc.ImageName)
-	out, err := kbc.Run(cmd)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(string(out)).NotTo(ContainSubstring("Warning: would violate PodSecurity"))
+	Expect(kbc.Run(cmd)).NotTo(ContainSubstring("Warning: would violate PodSecurity"))
 
 	By("validating that the controller-manager pod is running as expected")
 	verifyControllerUp := func(g Gomega) {
 		// Get pod name
-		var podOutput string
-		podOutput, err = kbc.Kubectl.Get(
+		podOutput, err := kbc.Kubectl.Get(
 			true,
 			"pods", "-l", "control-plane=controller-manager",
 			"-o", "go-template={{ range .items }}{{ if not .metadata.deletionTimestamp }}{{ .metadata.name }}"+
@@ -117,8 +114,8 @@ func Run(kbc *utils.TestContext) {
 			To(Equal("Running"), "incorrect controller pod status")
 	}
 	defer func() {
-		out, errDescribe := kbc.Kubectl.CommandInNamespace("describe", "all")
-		Expect(errDescribe).NotTo(HaveOccurred())
+		out, err := kbc.Kubectl.CommandInNamespace("describe", "all")
+		Expect(err).NotTo(HaveOccurred())
 		_, _ = fmt.Fprintln(GinkgoWriter, out)
 	}()
 	Eventually(verifyControllerUp).Should(Succeed())

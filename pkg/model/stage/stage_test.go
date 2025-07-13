@@ -20,81 +20,76 @@ import (
 	"sort"
 	"testing"
 
-	. "github.com/onsi/ginkgo/v2" // An alias is required because Context is defined elsewhere in this package.
+	g "github.com/onsi/ginkgo/v2" // An alias is required because Context is defined elsewhere in this package.
 	. "github.com/onsi/gomega"
 )
 
 func TestStage(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Stage Suite")
+	RegisterFailHandler(g.Fail)
+	g.RunSpecs(t, "Stage Suite")
 }
 
-var _ = Describe("ParseStage", func() {
-	DescribeTable("should be correctly parsed for valid stage strings",
+var _ = g.Describe("ParseStage", func() {
+	g.DescribeTable("should be correctly parsed for valid stage strings",
 		func(str string, stage Stage) {
 			s, err := ParseStage(str)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(s).To(Equal(stage))
 		},
-		Entry("for alpha stage", "alpha", Alpha),
-		Entry("for beta stage", "beta", Beta),
-		Entry("for stable stage", "", Stable),
+		g.Entry("for alpha stage", "alpha", Alpha),
+		g.Entry("for beta stage", "beta", Beta),
+		g.Entry("for stable stage", "", Stable),
 	)
 
-	DescribeTable("should error when parsing invalid stage strings",
+	g.DescribeTable("should error when parsing invalid stage strings",
 		func(str string) {
 			_, err := ParseStage(str)
 			Expect(err).To(HaveOccurred())
 		},
-		Entry("passing a number as the stage string", "1"),
-		Entry("passing `gamma` as the stage string", "gamma"),
-		Entry("passing a dash-prefixed stage string", "-alpha"),
+		g.Entry("passing a number as the stage string", "1"),
+		g.Entry("passing `gamma` as the stage string", "gamma"),
+		g.Entry("passing a dash-prefixed stage string", "-alpha"),
 	)
 })
 
-var _ = Describe("Stage", func() {
-	Context("String", func() {
-		DescribeTable("should return the correct string value",
+var _ = g.Describe("Stage", func() {
+	g.Context("String", func() {
+		g.DescribeTable("should return the correct string value",
 			func(stage Stage, str string) { Expect(stage.String()).To(Equal(str)) },
-			Entry("for alpha stage", Alpha, "alpha"),
-			Entry("for beta stage", Beta, "beta"),
-			Entry("for stable stage", Stable, ""),
+			g.Entry("for alpha stage", Alpha, "alpha"),
+			g.Entry("for beta stage", Beta, "beta"),
+			g.Entry("for stable stage", Stable, ""),
 		)
 
-		DescribeTable("should panic",
+		g.DescribeTable("should panic",
 			func(stage Stage) { Expect(func() { _ = stage.String() }).To(Panic()) },
-			Entry("for stage 34", Stage(34)),
-			Entry("for stage 75", Stage(75)),
-			Entry("for stage 123", Stage(123)),
-			Entry("for stage 255", Stage(255)),
+			g.Entry("for stage 34", Stage(34)),
+			g.Entry("for stage 75", Stage(75)),
+			g.Entry("for stage 123", Stage(123)),
+			g.Entry("for stage 255", Stage(255)),
 		)
 	})
 
-	Context("Validate", func() {
-		DescribeTable("should validate existing stages",
+	g.Context("Validate", func() {
+		g.DescribeTable("should validate existing stages",
 			func(stage Stage) { Expect(stage.Validate()).To(Succeed()) },
-			Entry("for alpha stage", Alpha),
-			Entry("for beta stage", Beta),
-			Entry("for stable stage", Stable),
+			g.Entry("for alpha stage", Alpha),
+			g.Entry("for beta stage", Beta),
+			g.Entry("for stable stage", Stable),
 		)
 
-		DescribeTable("should fail for non-existing stages",
+		g.DescribeTable("should fail for non-existing stages",
 			func(stage Stage) { Expect(stage.Validate()).NotTo(Succeed()) },
-			Entry("for stage 34", Stage(34)),
-			Entry("for stage 75", Stage(75)),
-			Entry("for stage 123", Stage(123)),
-			Entry("for stage 255", Stage(255)),
+			g.Entry("for stage 34", Stage(34)),
+			g.Entry("for stage 75", Stage(75)),
+			g.Entry("for stage 123", Stage(123)),
+			g.Entry("for stage 255", Stage(255)),
 		)
 	})
 
-	Context("Compare", func() {
+	g.Context("Compare", func() {
 		// Test Stage.Compare by sorting a list
 		var (
-			stages       []Stage
-			sortedStages []Stage
-		)
-
-		BeforeEach(func() {
 			stages = []Stage{
 				Stable,
 				Alpha,
@@ -112,9 +107,9 @@ var _ = Describe("Stage", func() {
 				Stable,
 				Stable,
 			}
-		})
+		)
 
-		It("sorts stages correctly", func() {
+		g.It("sorts stages correctly", func() {
 			sort.Slice(stages, func(i int, j int) bool {
 				return stages[i].Compare(stages[j]) == -1
 			})
@@ -122,15 +117,15 @@ var _ = Describe("Stage", func() {
 		})
 	})
 
-	Context("IsStable", func() {
-		It("should return true for stable stage", func() {
+	g.Context("IsStable", func() {
+		g.It("should return true for stable stage", func() {
 			Expect(Stable.IsStable()).To(BeTrue())
 		})
 
-		DescribeTable("should return false for any unstable stage",
+		g.DescribeTable("should return false for any unstable stage",
 			func(stage Stage) { Expect(stage.IsStable()).To(BeFalse()) },
-			Entry("for alpha stage", Alpha),
-			Entry("for beta stage", Beta),
+			g.Entry("for alpha stage", Alpha),
+			g.Entry("for beta stage", Beta),
 		)
 	})
 })

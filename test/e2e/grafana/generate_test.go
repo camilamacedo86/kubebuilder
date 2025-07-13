@@ -30,7 +30,9 @@ import (
 
 var _ = Describe("kubebuilder", func() {
 	Context("plugin grafana/v1-alpha", func() {
-		var kbc *utils.TestContext
+		var (
+			kbc *utils.TestContext
+		)
 
 		BeforeEach(func() {
 			var err error
@@ -46,6 +48,7 @@ var _ = Describe("kubebuilder", func() {
 		It("should generate a runnable project with grafana plugin", func() {
 			GenerateProject(kbc)
 		})
+
 	})
 })
 
@@ -57,7 +60,7 @@ func GenerateProject(kbc *utils.TestContext) {
 	err = kbc.Init(
 		"--plugins", "grafana.kubebuilder.io/v1-alpha",
 	)
-	Expect(err).NotTo(HaveOccurred(), "Failed to initialize project")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	By("verifying the initial template content and updating for real custom metrics")
 	ExpectWithOffset(1, pluginutil.ReplaceInFile(
@@ -80,17 +83,17 @@ customMetrics:
 	err = kbc.Edit(
 		"--plugins", "grafana.kubebuilder.io/v1-alpha",
 	)
-	Expect(err).NotTo(HaveOccurred(), "Failed to edit base of the project")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	fileContainsExpr, err := pluginutil.HasFileContentWith(
 		filepath.Join(kbc.Dir, "grafana", "custom-metrics", "custom-metrics-dashboard.json"),
 		`sum(rate(foo_bar{job=\"$job\", namespace=\"$namespace\"}[5m])) by (instance, pod)`)
-	Expect(err).NotTo(HaveOccurred(), "Failed to edit sum rate for custom metrics")
-	Expect(fileContainsExpr).To(BeTrue())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, fileContainsExpr).To(BeTrue())
 
 	fileContainsExpr, err = pluginutil.HasFileContentWith(
 		filepath.Join(kbc.Dir, "grafana", "custom-metrics", "custom-metrics-dashboard.json"),
 		`histogram_quantile(0.90, sum by(instance, le) (rate(foo_bar{job=\"$job\", namespace=\"$namespace\"}[5m])))`)
-	Expect(err).NotTo(HaveOccurred(), "Failed to edit histogram_quantile for custom metrics")
-	Expect(fileContainsExpr).To(BeTrue())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, fileContainsExpr).To(BeTrue())
 }

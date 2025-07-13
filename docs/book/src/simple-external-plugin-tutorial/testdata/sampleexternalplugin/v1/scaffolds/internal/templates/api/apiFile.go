@@ -22,9 +22,6 @@ type ApiFile struct {
 	Name     string
 	Contents string
 	number   int
-	group    string
-	version  string
-	kind     string
 }
 
 // ApiFileOptions is a way to set configurable options for the API file
@@ -34,27 +31,6 @@ type ApiFileOptions func(af *ApiFile)
 func WithNumber(number int) ApiFileOptions {
 	return func(af *ApiFile) {
 		af.number = number
-	}
-}
-
-// WithGroup sets the group value
-func WithGroup(group string) ApiFileOptions {
-	return func(af *ApiFile) {
-		af.group = group
-	}
-}
-
-// WithVersion sets the version value
-func WithVersion(version string) ApiFileOptions {
-	return func(af *ApiFile) {
-		af.version = version
-	}
-}
-
-// WithKind sets the kind value
-func WithKind(kind string) ApiFileOptions {
-	return func(af *ApiFile) {
-		af.kind = kind
 	}
 }
 
@@ -68,14 +44,9 @@ func NewApiFile(opts ...ApiFileOptions) *ApiFile {
 		opt(apiFile)
 	}
 
-	apiFile.Contents = fmt.Sprintf(apiFileTemplate,
-		apiFile.number, apiFile.group, apiFile.version, apiFile.kind)
+	apiFile.Contents = fmt.Sprintf(apiFileTemplate, apiFile.number)
 
 	return apiFile
 }
 
-const apiFileTemplate = `A simple text file created with the create api subcommand
-NUMBER: %d
-GROUP: %s
-VERSION: %s
-KIND: %s`
+const apiFileTemplate = "A simple text file created with the `create api` subcommand\nNUMBER: %d"

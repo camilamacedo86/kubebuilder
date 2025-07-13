@@ -344,8 +344,8 @@ or [External Plugin][external-plugin] properly uses the
 [PROJECT file][project-file-config] to track relevant information.
 This ensures that other external tools and plugins can properly
 integrate with the project. It also allows tools features to help users
-re-scaffold their projects such as using the [Alpha Commands](./../../reference/alpha_commands.md)
-to upgrade the project scaffold to a newer version of Kubebuilder, ensuring the tracked information in the
+re-scaffold their projects such as the [Project Upgrade Assistant][upgrade-assistant]
+provided by Kubebuilder, ensuring the tracked information in the
 PROJECT file can be leveraged for various purposes.
 
 For example, plugins can check whether they support the project setup
@@ -394,6 +394,7 @@ creating features or plugins that can rely on this information.
 [sdk]: https://github.com/operator-framework/operator-sdk
 [plugin-interface]: https://pkg.go.dev/sigs.k8s.io/kubebuilder/v4/pkg/plugin
 [machinery]: https://github.com/kubernetes-sigs/kubebuilder/tree/master/pkg/machinery
+[plugin-subc]: https://pkg.go.dev/sigs.k8s.io/kubebuilder/v4/pkg/plugin#Subcommand
 [plugin-subc-metadata]: https://pkg.go.dev/sigs.k8s.io/kubebuilder/v4/pkg/plugin#SubcommandMetadata
 [plugin-version-type]: https://pkg.go.dev/sigs.k8s.io/kubebuilder/v4/pkg/plugin#Version
 [bundle-plugin-doc]: https://pkg.go.dev/sigs.k8s.io/kubebuilder/v4/pkg/plugin#Bundle
@@ -404,8 +405,8 @@ creating features or plugins that can rely on this information.
 [markers-scaffold]: ./../../reference/markers/scaffold.md
 [kb-utils]: https://github.com/kubernetes-sigs/kubebuilder/blob/book-v4/pkg/plugin/util/util.go
 [project-file-config]: ./../../reference/project-config.md
-[cli]: https://github.com/kubernetes-sigs/kubebuilder/tree/book-v4/pkg/cli
-[kb-go-plugin]: https://github.com/kubernetes-sigs/kubebuilder/tree/book-v4/pkg/plugins/golang/v4
+[cli]: ./../../../../../pkg/cli
+[kb-go-plugin]: ./../../../../../pkg/plugins/golang/v4
 [cobra]: https://github.com/spf13/cobra
 [external-plugin]: external-plugins.md
 [deploy-image]: ./../available/deploy-image-plugin-v1-alpha.md

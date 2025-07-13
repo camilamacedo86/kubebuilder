@@ -27,7 +27,7 @@ type DockerIgnore struct {
 	machinery.TemplateMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *DockerIgnore) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = ".dockerignore"

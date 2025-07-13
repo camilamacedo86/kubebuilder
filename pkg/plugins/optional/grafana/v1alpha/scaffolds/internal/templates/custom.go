@@ -22,13 +22,13 @@ import (
 
 var _ machinery.Template = &CustomMetricsConfigManifest{}
 
-// CustomMetricsConfigManifest scaffolds a file that defines the kustomization scheme for the prometheus folder
+// Kustomization scaffolds a file that defines the kustomization scheme for the prometheus folder
 type CustomMetricsConfigManifest struct {
 	machinery.TemplateMixin
 	ConfigPath string
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *CustomMetricsConfigManifest) SetTemplateDefaults() error {
 	f.Path = f.ConfigPath
 
@@ -39,6 +39,7 @@ func (f *CustomMetricsConfigManifest) SetTemplateDefaults() error {
 	return nil
 }
 
+// nolint: lll
 const customMetricsConfigTemplate = `---
 customMetrics:
 #  - metric: # Raw custom metric (required)

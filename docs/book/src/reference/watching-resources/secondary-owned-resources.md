@@ -80,7 +80,7 @@ is scaled back to 1 replica.
 ```go
 // Reconcile handles the main reconciliation loop for Busybox and the Deployment
 func (r *BusyboxReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-    log := logf.FromContext(ctx)
+    log := log.FromContext(ctx)
 
     // Fetch the Busybox instance
     busybox := &examplecomv1alpha1.Busybox{}

@@ -28,7 +28,7 @@ type Golangci struct {
 	machinery.ProjectNameMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *Golangci) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = ".golangci.yml"
@@ -41,18 +41,37 @@ func (f *Golangci) SetTemplateDefaults() error {
 	return nil
 }
 
-const golangciTemplate = `version: "2"
-run:
+//nolint:lll
+const golangciTemplate = `run:
+  timeout: 5m
   allow-parallel-runners: true
+
+issues:
+  # don't skip warning about doc comments
+  # don't exclude the default set of lint
+  exclude-use-default: false
+  # restore some of the defaults
+  # (fill in the rest as needed)
+  exclude-rules:
+    - path: "api/*"
+      linters:
+        - lll
+    - path: "internal/*"
+      linters:
+        - dupl
+        - lll
 linters:
-  default: none
+  disable-all: true
   enable:
-    - copyloopvar
     - dupl
     - errcheck
+    - copyloopvar
     - ginkgolinter
     - goconst
     - gocyclo
+    - gofmt
+    - goimports
+    - gosimple
     - govet
     - ineffassign
     - lll
@@ -61,36 +80,13 @@ linters:
     - prealloc
     - revive
     - staticcheck
+    - typecheck
     - unconvert
     - unparam
     - unused
-  settings:
-    revive:
-      rules:
-        - name: comment-spacings
-        - name: import-shadowing
-  exclusions:
-    generated: lax
+
+linters-settings:
+  revive:
     rules:
-      - linters:
-          - lll
-        path: api/*
-      - linters:
-          - dupl
-          - lll
-        path: internal/*
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
-formatters:
-  enable:
-    - gofmt
-    - goimports
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+      - name: comment-spacings
 `

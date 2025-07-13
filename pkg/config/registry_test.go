@@ -23,14 +23,9 @@ import (
 
 var _ = Describe("registry", func() {
 	var (
-		version Version
-		f       func() Config
-	)
-
-	BeforeEach(func() {
 		version = Version{}
-		f = func() Config { return nil }
-	})
+		f       = func() Config { return nil }
+	)
 
 	AfterEach(func() {
 		registry = make(map[Version]func() Config)

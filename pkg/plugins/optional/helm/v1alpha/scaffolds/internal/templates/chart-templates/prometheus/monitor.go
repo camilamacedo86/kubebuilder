@@ -48,8 +48,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   labels:
-    {{ "{{- include \"chart.labels\" . | nindent 4 }}" }}
-    control-plane: controller-manager
+	{{ "{{- include \"chart.labels\" . | nindent 4 }}" }}
   name: {{ .ProjectName }}-controller-manager-metrics-monitor
   namespace: {{ "{{ .Release.Namespace }}" }}
 spec:
@@ -60,7 +59,6 @@ spec:
       bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
       tlsConfig:
         {{ "{{- if .Values.certmanager.enable }}" }}
-        serverName: {{ .ProjectName }}-controller-manager-metrics-service.{{ "{{ .Release.Namespace }}" }}.svc
         # Apply secure TLS configuration with cert-manager
         insecureSkipVerify: false
         ca:

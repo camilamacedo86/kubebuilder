@@ -126,7 +126,6 @@ func (c *CLI) applySubcommandHooks(
 		errorMessage:   errorMessage,
 		projectVersion: c.projectVersion,
 		pluginChain:    pluginChain,
-		cliVersion:     c.cliVersion,
 	}
 	cmd.PreRunE = factory.preRunEFunc(options, createConfig)
 	cmd.RunE = factory.runEFunc()
@@ -188,8 +187,6 @@ type executionHooksFactory struct {
 	projectVersion config.Version
 	// pluginChain is the plugin chain configured for this project.
 	pluginChain []string
-	// cliVersion is the version of the CLI.
-	cliVersion string
 }
 
 func (factory *executionHooksFactory) forEach(cb func(subcommand plugin.Subcommand) error, errorMessage string) error {
@@ -245,11 +242,6 @@ func (factory *executionHooksFactory) preRunEFunc(
 		}
 		cfg := factory.store.Config()
 
-		// Set the CLI version if creating a new project configuration.
-		if createConfig {
-			_ = cfg.SetCliVersion(factory.cliVersion)
-		}
-
 		// Set the pluginChain field.
 		if len(factory.pluginChain) != 0 {
 			_ = cfg.SetPluginChain(factory.pluginChain)
@@ -293,7 +285,7 @@ func (factory *executionHooksFactory) preRunEFunc(
 		}
 
 		// Pre-scaffold hook.
-		//nolint:revive
+		// nolint:revive
 		if err := factory.forEach(func(subcommand plugin.Subcommand) error {
 			if subcommand, hasPreScaffold := subcommand.(plugin.HasPreScaffold); hasPreScaffold {
 				return subcommand.PreScaffold(factory.fs)
@@ -311,7 +303,7 @@ func (factory *executionHooksFactory) preRunEFunc(
 func (factory *executionHooksFactory) runEFunc() func(*cobra.Command, []string) error {
 	return func(*cobra.Command, []string) error {
 		// Scaffold hook.
-		//nolint:revive
+		// nolint:revive
 		if err := factory.forEach(func(subcommand plugin.Subcommand) error {
 			return subcommand.Scaffold(factory.fs)
 		}, "unable to scaffold with"); err != nil {
@@ -331,7 +323,7 @@ func (factory *executionHooksFactory) postRunEFunc() func(*cobra.Command, []stri
 		}
 
 		// Post-scaffold hook.
-		//nolint:revive
+		// nolint:revive
 		if err := factory.forEach(func(subcommand plugin.Subcommand) error {
 			if subcommand, hasPostScaffold := subcommand.(plugin.HasPostScaffold); hasPostScaffold {
 				return subcommand.PostScaffold()

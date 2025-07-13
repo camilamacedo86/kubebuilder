@@ -31,7 +31,7 @@ type ServiceMonitorPatch struct {
 	machinery.ProjectNameMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *ServiceMonitorPatch) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join("config", "prometheus", "monitor_tls_patch.yaml")
@@ -44,21 +44,24 @@ func (f *ServiceMonitorPatch) SetTemplateDefaults() error {
 
 const serviceMonitorPatchTemplate = `# Patch for Prometheus ServiceMonitor to enable secure TLS configuration
 # using certificates managed by cert-manager
-- op: replace
-  path: /spec/endpoints/0/tlsConfig
-  value:
-    # SERVICE_NAME and SERVICE_NAMESPACE will be substituted by kustomize
-    serverName: SERVICE_NAME.SERVICE_NAMESPACE.svc
-    insecureSkipVerify: false
-    ca:
-      secret:
-        name: metrics-server-cert
-        key: ca.crt
-    cert:
-      secret:
-        name: metrics-server-cert
-        key: tls.crt
-    keySecret:
-      name: metrics-server-cert
-      key: tls.key
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: controller-manager-metrics-monitor
+  namespace: system
+spec:
+  endpoints:
+    - tlsConfig:
+        insecureSkipVerify: false
+        ca:
+          secret:
+            name: metrics-server-cert
+            key: ca.crt
+        cert:
+          secret:
+            name: metrics-server-cert
+            key: tls.crt
+        keySecret:
+          name: metrics-server-cert
+          key: tls.key
 `

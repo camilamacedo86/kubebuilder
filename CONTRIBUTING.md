@@ -10,7 +10,7 @@ Please see https://git.k8s.io/community/CLA.md for more info.
 
 ## Prerequisites
 
-- [go](https://golang.org/dl/) version v1.23+.
+- [go](https://golang.org/dl/) version v1.22+.
 - [docker](https://docs.docker.com/install/) version 17.03+.
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) version v1.11.3+.
 - [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/site/content/en/docs/Getting%20started/installation.md) v3.1.0+
@@ -80,8 +80,9 @@ To manually setup run:
 ```shell
 # To generate an Kubebuilder local binary with your changes
 make install
-# To create the cluster
+# To create the cluster and configure a CNI which supports NetworkPolicy
 kind create cluster --config ./test/e2e/kind-config.yaml
+kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 ```
 
 Now, you can for example, run in debug mode the `test/e2e/v4/e2e_suite_test.go`:

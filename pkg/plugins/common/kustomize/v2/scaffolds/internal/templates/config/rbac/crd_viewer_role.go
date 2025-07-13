@@ -37,7 +37,7 @@ type CRDViewerRole struct {
 	RoleName string
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *CRDViewerRole) SetTemplateDefaults() error {
 	if f.Path == "" {
 		if f.MultiGroup && f.Resource.Group != "" {
@@ -45,6 +45,7 @@ func (f *CRDViewerRole) SetTemplateDefaults() error {
 		} else {
 			f.Path = filepath.Join("config", "rbac", "%[kind]_viewer_role.yaml")
 		}
+
 	}
 	f.Path = f.Resource.Replacer().Replace(f.Path)
 

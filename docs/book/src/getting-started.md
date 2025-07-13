@@ -116,7 +116,7 @@ Please ensure that you review: [Kubernetes API Conventions](https://github.com/k
 #### Markers and validations
 
 Furthermore, we want to validate the values added in our CustomResource
-to ensure that those are valid. To achieve this, we will use [markers][markers],
+to ensure that those are valid. To do it we are will use refer [markers][markers],
 such as `+kubebuilder:validation:Minimum=1`.
 
 Now, see our example fully completed.
@@ -129,7 +129,7 @@ To generate all required files:
 
 1. Run `make generate` to create the DeepCopy implementations in `api/v1alpha1/zz_generated.deepcopy.go`.
 
-2. Then, run `make manifests` to generate the CRD manifests under `config/crd/bases` and a sample for it under `config/samples`.
+2. Then, run `make manifests` to generate the CRD manifests under `config/crd/bases` and a sample for it under `config/crd/samples`.
 
 Both commands use [controller-gen][controller-gen] with different flags for code and manifest generation, respectively.
 
@@ -353,7 +353,7 @@ if err := ctrl.SetControllerReference(memcached, dep, r.Scheme); err != nil {
 
 <aside class="note">
 
-<h1><code>ownerRef</code> and Cascading Events</h1>
+<h1>`ownerRef` and  cascading event</h1>
 
 The ownerRef is crucial not only for allowing us to observe changes on the specific resource but also because,
 if we delete the Memcached Custom Resource (CR) from the cluster, we want all resources owned by it to be automatically
@@ -385,7 +385,7 @@ how it is implemented in our example:
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 ```
 
-After making changes to the controller, run the make manifests command. This will prompt [controller-gen][controller-gen]
+After making changes to the controller, run the make generate command. This will prompt [controller-gen][controller-gen]
 to refresh the files located under `config/rbac`.
 
 <details><summary><code>config/rbac/role.yaml</code>: Our RBAC Role generated </summary>
@@ -399,7 +399,7 @@ to refresh the files located under `config/rbac`.
 
 The [Manager][manager] in the `cmd/main.go` file is responsible for managing the controllers in your application.
 
-<details><summary><code>cmd/main.go</code>: Our main.go </summary>
+<details><summary><code>cmd/main.gol</code>: Our main.go </summary>
 
 ```go
 {{#include ./getting-started/testdata/project/cmd/main.go}}
@@ -439,6 +439,6 @@ implemented for your controller.
 [quick-start]: ./quick-start.md
 [best-practices]: ./reference/good-practices.md
 [cronjob-tutorial]: https://book.kubebuilder.io/cronjob-tutorial/cronjob-tutorial.html
-[deploy-image]: ./plugins/available/deploy-image-plugin-v1-alpha.md
+[deploy-image]: ./plugins/deploy-image-plugin-v1-alpha.md
 [GOPATH-golang-docs]: https://golang.org/doc/code.html#GOPATH
 [go-modules-blogpost]: https://blog.golang.org/using-go-modules

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package networkpolicy
+package network_policy
 
 import (
 	"path/filepath"
@@ -22,17 +22,17 @@ import (
 	"sigs.k8s.io/kubebuilder/v4/pkg/machinery"
 )
 
-var _ machinery.Template = &PolicyAllowMetrics{}
+var _ machinery.Template = &NetworkPolicyAllowMetrics{}
 
-// PolicyAllowMetrics scaffolds a file that defines the NetworkPolicy
+// NetworkPolicyAllowMetrics scaffolds a file that defines the NetworkPolicy
 // to allow access to the metrics endpoint
-type PolicyAllowMetrics struct {
+type NetworkPolicyAllowMetrics struct {
 	machinery.TemplateMixin
 	machinery.ProjectNameMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
-func (f *PolicyAllowMetrics) SetTemplateDefaults() error {
+// SetTemplateDefaults implements file.Template
+func (f *NetworkPolicyAllowMetrics) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join("config", "network-policy", "allow-metrics-traffic.yaml")
 	}
@@ -57,7 +57,6 @@ spec:
   podSelector:
     matchLabels:
       control-plane: controller-manager
-      app.kubernetes.io/name: {{ .ProjectName }}
   policyTypes:
     - Ingress
   ingress:

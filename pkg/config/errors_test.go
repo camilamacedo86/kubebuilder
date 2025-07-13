@@ -26,13 +26,9 @@ import (
 )
 
 var _ = Describe("UnsupportedVersionError", func() {
-	var err UnsupportedVersionError
-
-	BeforeEach(func() {
-		err = UnsupportedVersionError{
-			Version: Version{Number: 1},
-		}
-	})
+	err := UnsupportedVersionError{
+		Version: Version{Number: 1},
+	}
 
 	Context("Error", func() {
 		It("should return the correct error message", func() {
@@ -42,14 +38,10 @@ var _ = Describe("UnsupportedVersionError", func() {
 })
 
 var _ = Describe("UnsupportedFieldError", func() {
-	var err UnsupportedFieldError
-
-	BeforeEach(func() {
-		err = UnsupportedFieldError{
-			Version: Version{Number: 1},
-			Field:   "name",
-		}
-	})
+	err := UnsupportedFieldError{
+		Version: Version{Number: 1},
+		Field:   "name",
+	}
 
 	Context("Error", func() {
 		It("should return the correct error message", func() {
@@ -59,18 +51,14 @@ var _ = Describe("UnsupportedFieldError", func() {
 })
 
 var _ = Describe("ResourceNotFoundError", func() {
-	var err ResourceNotFoundError
-
-	BeforeEach(func() {
-		err = ResourceNotFoundError{
-			GVK: resource.GVK{
-				Group:   "group",
-				Domain:  "my.domain",
-				Version: "v1",
-				Kind:    "Kind",
-			},
-		}
-	})
+	err := ResourceNotFoundError{
+		GVK: resource.GVK{
+			Group:   "group",
+			Domain:  "my.domain",
+			Version: "v1",
+			Kind:    "Kind",
+		},
+	}
 
 	Context("Error", func() {
 		It("should return the correct error message", func() {
@@ -80,13 +68,9 @@ var _ = Describe("ResourceNotFoundError", func() {
 })
 
 var _ = Describe("PluginKeyNotFoundError", func() {
-	var err PluginKeyNotFoundError
-
-	BeforeEach(func() {
-		err = PluginKeyNotFoundError{
-			Key: "go.kubebuilder.io/v1",
-		}
-	})
+	err := PluginKeyNotFoundError{
+		Key: "go.kubebuilder.io/v1",
+	}
 
 	Context("Error", func() {
 		It("should return the correct error message", func() {
@@ -97,14 +81,9 @@ var _ = Describe("PluginKeyNotFoundError", func() {
 
 var _ = Describe("MarshalError", func() {
 	var (
-		wrapped error
-		err     MarshalError
+		wrapped = fmt.Errorf("error message")
+		err     = MarshalError{Err: wrapped}
 	)
-
-	BeforeEach(func() {
-		wrapped = fmt.Errorf("wrapped error")
-		err = MarshalError{Err: wrapped}
-	})
 
 	Context("Error", func() {
 		It("should return the correct error message", func() {
@@ -121,14 +100,9 @@ var _ = Describe("MarshalError", func() {
 
 var _ = Describe("UnmarshalError", func() {
 	var (
-		wrapped error
-		err     UnmarshalError
+		wrapped = fmt.Errorf("error message")
+		err     = UnmarshalError{Err: wrapped}
 	)
-
-	BeforeEach(func() {
-		wrapped = fmt.Errorf("wrapped error")
-		err = UnmarshalError{Err: wrapped}
-	})
 
 	Context("Error", func() {
 		It("should return the correct error message", func() {

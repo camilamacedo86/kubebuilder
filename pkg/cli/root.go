@@ -29,7 +29,9 @@ const (
 	projectVersionsHeader = "Supported project versions"
 )
 
-var supportedPlatforms = []string{"darwin", "linux"}
+var (
+	supportedPlatforms = []string{"darwin", "linux"}
+)
 
 func (c CLI) newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{

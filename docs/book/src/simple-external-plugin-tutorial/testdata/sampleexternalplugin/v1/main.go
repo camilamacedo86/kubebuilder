@@ -16,9 +16,7 @@ limitations under the License.
 
 package main
 
-import (
-	"v1/cmd"
-)
+import "v1/cmd"
 
 func main() {
 	cmd.Run()

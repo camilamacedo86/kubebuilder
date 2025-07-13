@@ -28,7 +28,7 @@ import (
 var _ machinery.Template = &Webhook{}
 
 // Webhook scaffolds the file that defines a webhook for a CRD or a builtin resource
-type Webhook struct {
+type Webhook struct { // nolint:maligned
 	machinery.TemplateMixin
 	machinery.MultiGroupMixin
 	machinery.BoilerplateMixin
@@ -49,10 +49,11 @@ type Webhook struct {
 	IsLegacyPath bool
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *Webhook) SetTemplateDefaults() error {
 	if f.Path == "" {
 		// Deprecated: Remove me when remove go/v4
+		// nolint:goconst
 		baseDir := "api"
 		if !f.IsLegacyPath {
 			baseDir = filepath.Join("internal", "webhook")
@@ -84,7 +85,7 @@ func (f *Webhook) SetTemplateDefaults() error {
 	}
 
 	f.AdmissionReviewVersions = "v1"
-	f.QualifiedGroupWithDash = strings.ReplaceAll(f.Resource.QualifiedGroup(), ".", "-")
+	f.QualifiedGroupWithDash = strings.Replace(f.Resource.QualifiedGroup(), ".", "-", -1)
 
 	return nil
 }
@@ -162,7 +163,7 @@ func Setup{{ .Resource.Kind }}WebhookWithManager(mgr ctrl.Manager) error {
 {{ if .IsLegacyPath -}}
 // +kubebuilder:object:generate=false
 {{- end }}
-// {{ .Resource.Kind }}CustomDefaulter struct is responsible for setting default values on the custom resource of the
+// {{ .Resource.Kind }}CustomDefaulter struct is responsible for setting default values on the custom resource of the 
 // Kind {{ .Resource.Kind }} when those are created or updated.
 //
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
@@ -174,7 +175,7 @@ type {{ .Resource.Kind }}CustomDefaulter struct {
 var _ webhook.CustomDefaulter = &{{ .Resource.Kind }}CustomDefaulter{}
 
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind {{ .Resource.Kind }}.
-func (d *{{ .Resource.Kind }}CustomDefaulter) Default(_ context.Context, obj runtime.Object) error {
+func (d *{{ .Resource.Kind }}CustomDefaulter) Default(ctx context.Context, obj runtime.Object) error {
 	{{- if .IsLegacyPath -}}
 	{{ lower .Resource.Kind }}, ok := obj.(*{{ .Resource.Kind }})
 	{{- else }}
@@ -183,7 +184,7 @@ func (d *{{ .Resource.Kind }}CustomDefaulter) Default(_ context.Context, obj run
 
 	if !ok {
 		return fmt.Errorf("expected an {{ .Resource.Kind }} object but got %T", obj)
-	}
+	}	
 	{{ lower .Resource.Kind }}log.Info("Defaulting for {{ .Resource.Kind }}", "name", {{ lower .Resource.Kind }}.GetName())
 
 	// TODO(user): fill in your defaulting logic.
@@ -202,19 +203,19 @@ func (d *{{ .Resource.Kind }}CustomDefaulter) Default(_ context.Context, obj run
 {{ if .IsLegacyPath -}}
 // +kubebuilder:object:generate=false
 {{- end }}
-// {{ .Resource.Kind }}CustomValidator struct is responsible for validating the {{ .Resource.Kind }} resource
+// {{ .Resource.Kind }}CustomValidator struct is responsible for validating the {{ .Resource.Kind }} resource 
 // when it is created, updated, or deleted.
 //
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 type {{ .Resource.Kind }}CustomValidator struct{
-	// TODO(user): Add more fields as needed for validation
+	//TODO(user): Add more fields as needed for validation
 }
 
 var _ webhook.CustomValidator = &{{ .Resource.Kind }}CustomValidator{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type {{ .Resource.Kind }}.
-func (v *{{ .Resource.Kind }}CustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (v *{{ .Resource.Kind }}CustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	{{- if .IsLegacyPath -}}
 	{{ lower .Resource.Kind }}, ok := obj.(*{{ .Resource.Kind }})
 	{{- else }}
@@ -231,7 +232,7 @@ func (v *{{ .Resource.Kind }}CustomValidator) ValidateCreate(_ context.Context, 
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type {{ .Resource.Kind }}.
-func (v *{{ .Resource.Kind }}CustomValidator) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (v *{{ .Resource.Kind }}CustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	{{- if .IsLegacyPath -}}
 	{{ lower .Resource.Kind }}, ok := newObj.(*{{ .Resource.Kind }})
 	{{- else }}

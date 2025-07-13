@@ -18,15 +18,16 @@ package main
 
 import (
 	log "github.com/sirupsen/logrus"
+
 	cronjob "sigs.k8s.io/kubebuilder/v4/hack/docs/internal/cronjob-tutorial"
 	gettingstarted "sigs.k8s.io/kubebuilder/v4/hack/docs/internal/getting-started"
 	multiversion "sigs.k8s.io/kubebuilder/v4/hack/docs/internal/multiversion-tutorial"
 )
 
-// KubebuilderBinName make sure executing `build_kb` to generate kb executable from the source code
+// Make sure executing `build_kb` to generate kb executable from the source code
 const KubebuilderBinName = "/tmp/kubebuilder/bin/kubebuilder"
 
-type tutorialGenerator interface {
+type tutorial_generator interface {
 	Prepare()
 	GenerateSampleProject()
 	UpdateTutorial()
@@ -37,9 +38,9 @@ func main() {
 	type generator func()
 
 	tutorials := map[string]generator{
-		"cronjob":         updateCronjobTutorial,
-		"getting-started": updateGettingStarted,
-		"multiversion":    updateMultiversionTutorial,
+		"cronjob":         UpdateCronjobTutorial,
+		"getting-started": UpdateGettingStarted,
+		"multiversion":    UpdateMultiversionTutorial,
 	}
 
 	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
@@ -51,26 +52,26 @@ func main() {
 	}
 }
 
-func updateTutorial(generator tutorialGenerator) {
+func updateTutorial(generator tutorial_generator) {
 	generator.Prepare()
 	generator.GenerateSampleProject()
 	generator.UpdateTutorial()
 	generator.CodeGen()
 }
 
-func updateCronjobTutorial() {
+func UpdateCronjobTutorial() {
 	samplePath := "docs/book/src/cronjob-tutorial/testdata/project/"
 	sp := cronjob.NewSample(KubebuilderBinName, samplePath)
 	updateTutorial(&sp)
 }
 
-func updateGettingStarted() {
+func UpdateGettingStarted() {
 	samplePath := "docs/book/src/getting-started/testdata/project"
 	sp := gettingstarted.NewSample(KubebuilderBinName, samplePath)
 	updateTutorial(&sp)
 }
 
-func updateMultiversionTutorial() {
+func UpdateMultiversionTutorial() {
 	samplePath := "docs/book/src/multiversion-tutorial/testdata/project"
 	sp := cronjob.NewSample(KubebuilderBinName, samplePath)
 	updateTutorial(&sp)

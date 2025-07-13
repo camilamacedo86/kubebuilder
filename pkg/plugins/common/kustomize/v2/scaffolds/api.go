@@ -48,9 +48,9 @@ type apiScaffolder struct {
 }
 
 // NewAPIScaffolder returns a new Scaffolder for API/controller creation operations
-func NewAPIScaffolder(cfg config.Config, res resource.Resource, force bool) plugins.Scaffolder {
+func NewAPIScaffolder(config config.Config, res resource.Resource, force bool) plugins.Scaffolder {
 	return &apiScaffolder{
-		config:   cfg,
+		config:   config,
 		resource: res,
 		force:    force,
 	}
@@ -81,31 +81,30 @@ func (s *apiScaffolder) Scaffold() error {
 			&crd.Kustomization{},
 			&crd.KustomizeConfig{},
 		); err != nil {
-			return fmt.Errorf("error scaffolding kustomize API manifests: %w", err)
+			return fmt.Errorf("error scaffolding kustomize API manifests: %v", err)
 		}
 
 		// If the gvk is non-empty
 		if s.resource.Group != "" || s.resource.Version != "" || s.resource.Kind != "" {
 			if err := scaffold.Execute(&samples.Kustomization{}); err != nil {
-				return fmt.Errorf("error scaffolding manifests: %w", err)
+				return fmt.Errorf("error scaffolding manifests: %v", err)
 			}
 		}
 
+		kustomizeFilePath := "config/default/kustomization.yaml"
 		err := pluginutil.UncommentCode(kustomizeFilePath, "#- ../crd", `#`)
 		if err != nil {
-			hasCRUncommented, errCheck := pluginutil.HasFileContentWith(kustomizeFilePath, "- ../crd")
-			if !hasCRUncommented || errCheck != nil {
+			hasCRUncommented, err := pluginutil.HasFileContentWith(kustomizeFilePath, "- ../crd")
+			if !hasCRUncommented || err != nil {
 				log.Errorf("Unable to find the target #- ../crd to uncomment in the file "+
 					"%s.", kustomizeFilePath)
 			}
 		}
 
-		comment := fmt.Sprintf(adminEditViewRulesCommentFragment, s.config.GetProjectName())
-
 		// Add scaffolded CRD Admin, Editor and Viewer roles in config/rbac/kustomization.yaml
 		rbacKustomizeFilePath := "config/rbac/kustomization.yaml"
 		err = pluginutil.AppendCodeIfNotExist(rbacKustomizeFilePath,
-			comment)
+			adminEditViewRulesCommentFragment)
 		if err != nil {
 			log.Errorf("Unable to append the admin/edit/view roles comment in the file "+
 				"%s.", rbacKustomizeFilePath)
@@ -114,7 +113,7 @@ func (s *apiScaffolder) Scaffold() error {
 		if s.config.IsMultiGroup() && s.resource.Group != "" {
 			crdName = strings.ToLower(s.resource.Group) + "_" + crdName
 		}
-		err = pluginutil.InsertCodeIfNotExist(rbacKustomizeFilePath, comment,
+		err = pluginutil.InsertCodeIfNotExist(rbacKustomizeFilePath, adminEditViewRulesCommentFragment,
 			fmt.Sprintf("\n- %[1]s_admin_role.yaml\n- %[1]s_editor_role.yaml\n- %[1]s_viewer_role.yaml", crdName))
 		if err != nil {
 			log.Errorf("Unable to add Admin, Editor and Viewer roles in the file "+
@@ -136,5 +135,5 @@ func (s *apiScaffolder) Scaffold() error {
 
 const adminEditViewRulesCommentFragment = `# For each CRD, "Admin", "Editor" and "Viewer" roles are scaffolded by
 # default, aiding admins in cluster management. Those roles are
-# not used by the %s itself. You can comment the following lines
+# not used by the {{ .ProjectName }} itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.`

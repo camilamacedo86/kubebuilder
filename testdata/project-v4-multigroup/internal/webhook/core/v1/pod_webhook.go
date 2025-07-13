@@ -52,13 +52,13 @@ func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 type PodCustomValidator struct {
-	// TODO(user): Add more fields as needed for validation
+	//TODO(user): Add more fields as needed for validation
 }
 
 var _ webhook.CustomValidator = &PodCustomValidator{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type Pod.
-func (v *PodCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (v *PodCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	pod, ok := obj.(*corev1.Pod)
 	if !ok {
 		return nil, fmt.Errorf("expected a Pod object but got %T", obj)
@@ -71,7 +71,7 @@ func (v *PodCustomValidator) ValidateCreate(_ context.Context, obj runtime.Objec
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Pod.
-func (v *PodCustomValidator) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (v *PodCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	pod, ok := newObj.(*corev1.Pod)
 	if !ok {
 		return nil, fmt.Errorf("expected a Pod object for the newObj but got %T", newObj)

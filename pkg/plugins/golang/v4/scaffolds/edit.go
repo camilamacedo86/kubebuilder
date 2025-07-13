@@ -17,8 +17,6 @@ limitations under the License.
 package scaffolds
 
 import (
-	"fmt"
-
 	"github.com/spf13/afero"
 
 	"sigs.k8s.io/kubebuilder/v4/pkg/config"
@@ -37,9 +35,9 @@ type editScaffolder struct {
 }
 
 // NewEditScaffolder returns a new Scaffolder for configuration edit operations
-func NewEditScaffolder(cfg config.Config, multigroup bool) plugins.Scaffolder {
+func NewEditScaffolder(config config.Config, multigroup bool) plugins.Scaffolder {
 	return &editScaffolder{
-		config:     cfg,
+		config:     config,
 		multigroup: multigroup,
 	}
 }
@@ -54,9 +52,14 @@ func (s *editScaffolder) Scaffold() error {
 	filename := "Dockerfile"
 	bs, err := afero.ReadFile(s.fs.FS, filename)
 	if err != nil {
-		return fmt.Errorf("error reading %q: %w", filename, err)
+		return err
 	}
 	str := string(bs)
+
+	// Ignore the error encountered, if the file is already in desired format.
+	if err != nil && s.multigroup != s.config.IsMultiGroup() {
+		return err
+	}
 
 	if s.multigroup {
 		_ = s.config.SetMultiGroup()
@@ -68,9 +71,7 @@ func (s *editScaffolder) Scaffold() error {
 	// because there is nothing to replace.
 	if str != "" {
 		// TODO: instead of writing it directly, we should use the scaffolding machinery for consistency
-		if err = afero.WriteFile(s.fs.FS, filename, []byte(str), 0o644); err != nil {
-			return fmt.Errorf("error writing %q: %w", filename, err)
-		}
+		return afero.WriteFile(s.fs.FS, filename, []byte(str), 0644)
 	}
 
 	return nil

@@ -27,8 +27,7 @@ import (
 var _ machinery.Template = &ControllerTest{}
 
 // ControllerTest scaffolds the file that defines tests for the controller for a CRD or a builtin resource
-//
-
+// nolint:maligned
 type ControllerTest struct {
 	machinery.TemplateMixin
 	machinery.MultiGroupMixin
@@ -39,7 +38,7 @@ type ControllerTest struct {
 	PackageName string
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *ControllerTest) SetTemplateDefaults() error {
 	if f.Path == "" {
 		if f.MultiGroup && f.Resource.Group != "" {
@@ -60,6 +59,7 @@ func (f *ControllerTest) SetTemplateDefaults() error {
 	return nil
 }
 
+//nolint:lll
 const controllerTestTemplate = `{{ .Boilerplate }}
 
 package {{ if and .MultiGroup .Resource.Group }}{{ .Resource.PackageName }}{{ else }}{{ .PackageName }}{{ end }}
@@ -69,17 +69,16 @@ import (
 	"os"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	
+	//nolint:golint
+    . "github.com/onsi/ginkgo/v2"
+    . "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
+	
 	{{ if not (isEmptyStr .Resource.Path) -}}
 	{{ .Resource.ImportAlias }} "{{ .Resource.Path }}"
 	{{- end }}
@@ -122,19 +121,19 @@ var _ = Describe("{{ .Resource.Kind }} controller", func() {
 			if err != nil && errors.IsNotFound(err) {
 				// Let's mock our custom resource at the same way that we would
 				// apply on the cluster the manifest under config/samples
-				{{ lower .Resource.Kind }} = &{{ .Resource.ImportAlias }}.{{ .Resource.Kind }}{
+				{{ lower .Resource.Kind }} := &{{ .Resource.ImportAlias }}.{{ .Resource.Kind }}{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      {{ .Resource.Kind }}Name,
 						Namespace: namespace.Name,
 					},
 					Spec: {{ .Resource.ImportAlias }}.{{ .Resource.Kind }}Spec{
-						Size: ptr.To(int32(1)),
+						Size: 1,
 						{{ if not (isEmptyStr .Port) -}}
 						ContainerPort: {{ .Port }},
 						{{- end }}
 					},
 				}
-
+				
 				err = k8sClient.Create(ctx, {{ lower .Resource.Kind }})
 				Expect(err).NotTo(HaveOccurred())
 			}
@@ -151,11 +150,11 @@ var _ = Describe("{{ .Resource.Kind }} controller", func() {
 			}).Should(Succeed())
 
 			// TODO(user): Attention if you improve this code by adding other context test you MUST
-			// be aware of the current delete namespace limitations.
+			// be aware of the current delete namespace limitations. 
 			// More info: https://book.kubebuilder.io/reference/envtest.html#testing-considerations
 			By("Deleting the Namespace to perform the tests")
 			_ = k8sClient.Delete(ctx, namespace);
-
+	
 			By("Removing the Image ENV VAR which stores the Operand image")
 			_ = os.Unsetenv("{{ upper .Resource.Kind }}_IMAGE")
 		})
@@ -192,7 +191,7 @@ var _ = Describe("{{ .Resource.Kind }} controller", func() {
 
 			By("Checking the latest Status Condition added to the {{ .Resource.Kind }} instance")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, {{ lower .Resource.Kind }})).To(Succeed())
-			var conditions []metav1.Condition
+			conditions := []metav1.Condition{}
 			Expect({{ lower .Resource.Kind }}.Status.Conditions).To(ContainElement(
 				HaveField("Type", Equal(typeAvailable{{ .Resource.Kind }})), &conditions))
 			Expect(conditions).To(HaveLen(1), "Multiple conditions of type %s", typeAvailable{{ .Resource.Kind }})

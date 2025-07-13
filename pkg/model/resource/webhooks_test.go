@@ -52,25 +52,12 @@ var _ = Describe("Webhooks", func() {
 				Defaulting:     true,
 				Validation:     true,
 				Conversion:     true,
-				Spoke:          []string{"v2"},
 			}
 			Expect(webhook.Update(nil)).To(Succeed())
 			Expect(webhook.WebhookVersion).To(Equal(v1))
 			Expect(webhook.Defaulting).To(BeTrue())
 			Expect(webhook.Validation).To(BeTrue())
 			Expect(webhook.Conversion).To(BeTrue())
-			Expect(webhook.Spoke).To(Equal([]string{"v2"}))
-		})
-
-		It("should merge Spoke values without duplicates", func() {
-			webhook = Webhooks{
-				Spoke: []string{"v1"},
-			}
-			other = Webhooks{
-				Spoke: []string{"v1", "v2"},
-			}
-			Expect(webhook.Update(&other)).To(Succeed())
-			Expect(webhook.Spoke).To(ConsistOf("v1", "v2")) // Ensure no duplicates
 		})
 
 		Context("webhooks version", func() {
@@ -195,20 +182,7 @@ var _ = Describe("Webhooks", func() {
 
 	Context("IsEmpty", func() {
 		var (
-			none       Webhooks
-			defaulting Webhooks
-			validation Webhooks
-			conversion Webhooks
-
-			defaultingAndValidation Webhooks
-			defaultingAndConversion Webhooks
-			validationAndConversion Webhooks
-
-			all Webhooks
-		)
-
-		BeforeEach(func() {
-			none = Webhooks{}
+			none       = Webhooks{}
 			defaulting = Webhooks{
 				WebhookVersion: "v1",
 				Defaulting:     true,
@@ -251,23 +225,21 @@ var _ = Describe("Webhooks", func() {
 				Validation:     true,
 				Conversion:     true,
 			}
-		})
+		)
 
 		It("should return true fo an empty object", func() {
 			Expect(none.IsEmpty()).To(BeTrue())
 		})
 
 		DescribeTable("should return false for non-empty objects",
-			func(get func() Webhooks) {
-				Expect(get().IsEmpty()).To(BeFalse())
-			},
-			Entry("defaulting", func() Webhooks { return defaulting }),
-			Entry("validation", func() Webhooks { return validation }),
-			Entry("conversion", func() Webhooks { return conversion }),
-			Entry("defaulting and validation", func() Webhooks { return defaultingAndValidation }),
-			Entry("defaulting and conversion", func() Webhooks { return defaultingAndConversion }),
-			Entry("validation and conversion", func() Webhooks { return validationAndConversion }),
-			Entry("defaulting and validation and conversion", func() Webhooks { return all }),
+			func(webhooks Webhooks) { Expect(webhooks.IsEmpty()).To(BeFalse()) },
+			Entry("defaulting", defaulting),
+			Entry("validation", validation),
+			Entry("conversion", conversion),
+			Entry("defaulting and validation", defaultingAndValidation),
+			Entry("defaulting and conversion", defaultingAndConversion),
+			Entry("validation and conversion", validationAndConversion),
+			Entry("defaulting and validation and conversion", all),
 		)
 	})
 })

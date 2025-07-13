@@ -164,14 +164,14 @@ the validation schema.
 */
 
 func validateCronJobName(cronjob *batchv1.CronJob) *field.Error {
-	if len(cronjob.Name) > validationutils.DNS1035LabelMaxLength-11 {
+	if len(cronjob.ObjectMeta.Name) > validationutils.DNS1035LabelMaxLength-11 {
 		// The job name length is 63 characters like all Kubernetes objects
 		// (which must fit in a DNS subdomain). The cronjob controller appends
 		// a 11-character suffix to the cronjob (` + "`" + `-$TIMESTAMP` + "`" + `) when creating
 		// a job. The job name length limit is 63 characters. Therefore cronjob
 		// names must have length <= 63-11=52. If we don't validate this here,
 		// then job creation will fail later.
-		return field.Invalid(field.NewPath("metadata").Child("name"), cronjob.Name, "must be no more than 52 characters")
+		return field.Invalid(field.NewPath("metadata").Child("name"), cronjob.ObjectMeta.Name, "must be no more than 52 characters")
 	}
 	return nil
 }
@@ -205,7 +205,7 @@ const webhookTestCreateDefaultingReplaceFragment = `It("Should apply defaults wh
 			obj.Spec.FailedJobsHistoryLimit = nil     // This should default to 1
 
 			By("calling the Default method to apply defaults")
-			_ = defaulter.Default(ctx, obj)
+			defaulter.Default(ctx, obj)
 
 			By("checking that the default values are set")
 			Expect(obj.Spec.ConcurrencyPolicy).To(Equal(batchv1.AllowConcurrent), "Expected ConcurrencyPolicy to default to AllowConcurrent")
@@ -225,7 +225,7 @@ const webhookTestCreateDefaultingReplaceFragment = `It("Should apply defaults wh
 			*obj.Spec.FailedJobsHistoryLimit = 2
 
 			By("calling the Default method to apply defaults")
-			_ = defaulter.Default(ctx, obj)
+			defaulter.Default(ctx, obj)
 			
 			By("checking that the fields were not overwritten")
 			Expect(obj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent), "Expected ConcurrencyPolicy to retain its set value")
@@ -256,14 +256,14 @@ const webhookTestingValidatingTodoFragment = `// TODO (user): Add logic for vali
 		// })`
 
 const webhookTestingValidatingExampleFragment = `It("Should deny creation if the name is too long", func() {
-			obj.Name = "this-name-is-way-too-long-and-should-fail-validation-because-it-is-way-too-long"
+			obj.ObjectMeta.Name = "this-name-is-way-too-long-and-should-fail-validation-because-it-is-way-too-long"
 			Expect(validator.ValidateCreate(ctx, obj)).Error().To(
 				MatchError(ContainSubstring("must be no more than 52 characters")),
 				"Expected name validation to fail for a too-long name")
 		})
 
 		It("Should admit creation if the name is valid", func() {
-			obj.Name = validCronJobName
+			obj.ObjectMeta.Name = "valid-cronjob-name"
 			Expect(validator.ValidateCreate(ctx, obj)).To(BeNil(),
 				"Expected name validation to pass for a valid name")
 		})
@@ -276,17 +276,17 @@ const webhookTestingValidatingExampleFragment = `It("Should deny creation if the
 		})
 
 		It("Should admit creation if the schedule is valid", func() {
-			obj.Spec.Schedule = schedule
+			obj.Spec.Schedule = "*/5 * * * *"
 			Expect(validator.ValidateCreate(ctx, obj)).To(BeNil(),
 				"Expected spec validation to pass for a valid schedule")
 		})
 
 		It("Should deny update if both name and spec are invalid", func() {
-			oldObj.Name = validCronJobName
-			oldObj.Spec.Schedule = schedule
+			oldObj.ObjectMeta.Name = "valid-cronjob-name"
+			oldObj.Spec.Schedule = "*/5 * * * *"
 
 			By("simulating an update")
-			obj.Name = "this-name-is-way-too-long-and-should-fail-validation-because-it-is-way-too-long"
+			obj.ObjectMeta.Name = "this-name-is-way-too-long-and-should-fail-validation-because-it-is-way-too-long"
 			obj.Spec.Schedule = "invalid-cron-schedule"
 
 			By("validating an update")
@@ -295,34 +295,17 @@ const webhookTestingValidatingExampleFragment = `It("Should deny creation if the
 		})
 
 		It("Should admit update if both name and spec are valid", func() {
-			oldObj.Name = validCronJobName
-			oldObj.Spec.Schedule = schedule
+			oldObj.ObjectMeta.Name = "valid-cronjob-name"
+			oldObj.Spec.Schedule = "*/5 * * * *"
 
 			By("simulating an update")
-			obj.Name = "valid-cronjob-name-updated"
+			obj.ObjectMeta.Name = "valid-cronjob-name-updated"
 			obj.Spec.Schedule = "0 0 * * *"
 
 			By("validating an update")
 			Expect(validator.ValidateUpdate(ctx, oldObj, obj)).To(BeNil(),
 				"Expected validation to pass for a valid update")
 		})`
-
-const webhookTestsVars = `var (
-		obj       *batchv1.CronJob
-		oldObj    *batchv1.CronJob
-		validator CronJobCustomValidator
-		defaulter CronJobCustomDefaulter
-	)`
-
-const webhookTestsConstants = `	var (
-		obj       *batchv1.CronJob
-		oldObj    *batchv1.CronJob
-		validator CronJobCustomValidator
-		defaulter CronJobCustomDefaulter
-	)
-
-	const validCronJobName = "valid-cronjob-name"
-	const schedule = "*/5 * * * *"`
 
 const webhookTestsBeforeEachOriginal = `obj = &batchv1.CronJob{}
 		oldObj = &batchv1.CronJob{}
@@ -336,7 +319,7 @@ const webhookTestsBeforeEachOriginal = `obj = &batchv1.CronJob{}
 
 const webhookTestsBeforeEachChanged = `obj = &batchv1.CronJob{
 			Spec: batchv1.CronJobSpec{
-				Schedule:                   schedule,
+				Schedule:                   "*/5 * * * *",
 				ConcurrencyPolicy:          batchv1.AllowConcurrent,
 				SuccessfulJobsHistoryLimit: new(int32),
 				FailedJobsHistoryLimit:     new(int32),
@@ -347,7 +330,7 @@ const webhookTestsBeforeEachChanged = `obj = &batchv1.CronJob{
 
 		oldObj = &batchv1.CronJob{
 			Spec: batchv1.CronJobSpec{
-				Schedule:                   schedule,
+				Schedule:                   "*/5 * * * *",
 				ConcurrencyPolicy:          batchv1.AllowConcurrent,
 				SuccessfulJobsHistoryLimit: new(int32),
 				FailedJobsHistoryLimit:     new(int32),

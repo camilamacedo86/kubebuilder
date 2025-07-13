@@ -19,7 +19,6 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -38,19 +37,14 @@ import (
 var _ = Describe("Discover external plugins", func() {
 	Context("with valid plugins root path", func() {
 		var (
-			homePath   string
-			customPath string
+			homePath   string = os.Getenv("HOME")
+			customPath string = "/tmp/myplugins"
 			// store user's original EXTERNAL_PLUGINS_PATH
 			originalPluginPath string
 			xdghome            string
 			// store user's original XDG_CONFIG_HOME
 			originalXdghome string
 		)
-
-		BeforeEach(func() {
-			homePath = os.Getenv("HOME")
-			customPath = "/tmp/myplugins"
-		})
 
 		When("XDG_CONFIG_HOME is not set and using the $HOME environment variable", func() {
 			// store and unset the XDG_CONFIG_HOME
@@ -132,7 +126,7 @@ var _ = Describe("Discover external plugins", func() {
 
 		When("using the custom path", func() {
 			BeforeEach(func() {
-				err := os.MkdirAll(customPath, 0o750)
+				err := os.MkdirAll(customPath, 0750)
 				Expect(err).ToNot(HaveOccurred())
 
 				// store and set the EXTERNAL_PLUGINS_PATH
@@ -226,15 +220,13 @@ var _ = Describe("Discover external plugins", func() {
 			pluginFilePath string
 			pluginFileName string
 			pluginPath     string
-			pluginsRoot    string
-			plugins        []plugin.Plugin
 			f              afero.File
-			filesystem     machinery.Filesystem
+			fs             machinery.Filesystem
 			err            error
 		)
 
 		BeforeEach(func() {
-			filesystem = machinery.Filesystem{
+			fs = machinery.Filesystem{
 				FS: afero.NewMemMapFs(),
 			}
 
@@ -244,14 +236,14 @@ var _ = Describe("Discover external plugins", func() {
 			pluginFileName = "externalPlugin.sh"
 			pluginFilePath = filepath.Join(pluginPath, "externalPlugin", "v1", pluginFileName)
 
-			err = filesystem.FS.MkdirAll(filepath.Dir(pluginFilePath), 0o700)
+			err = fs.FS.MkdirAll(filepath.Dir(pluginFilePath), 0o700)
 			Expect(err).ToNot(HaveOccurred())
 
-			f, err = filesystem.FS.Create(pluginFilePath)
+			f, err = fs.FS.Create(pluginFilePath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(f).ToNot(BeNil())
 
-			_, err = filesystem.FS.Stat(pluginFilePath)
+			_, err = fs.FS.Stat(pluginFilePath)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -261,56 +253,56 @@ var _ = Describe("Discover external plugins", func() {
 			_, err = f.WriteString(testPluginScript)
 			Expect(err).To(Not(HaveOccurred()))
 
-			err = filesystem.FS.Chmod(pluginFilePath, filePermissions)
+			err = fs.FS.Chmod(pluginFilePath, filePermissions)
 			Expect(err).To(Not(HaveOccurred()))
 
-			_, err = filesystem.FS.Stat(pluginFilePath)
+			_, err = fs.FS.Stat(pluginFilePath)
 			Expect(err).ToNot(HaveOccurred())
 
-			plugins, err = DiscoverExternalPlugins(filesystem.FS)
+			ps, err := DiscoverExternalPlugins(fs.FS)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(plugins).NotTo(BeNil())
-			Expect(plugins).To(HaveLen(1))
-			Expect(plugins[0].Name()).To(Equal("externalPlugin"))
-			Expect(plugins[0].Version().Number).To(Equal(1))
+			Expect(ps).NotTo(BeNil())
+			Expect(ps).To(HaveLen(1))
+			Expect(ps[0].Name()).To(Equal("externalPlugin"))
+			Expect(ps[0].Version().Number).To(Equal(1))
 		})
 
 		It("should discover multiple external plugins and return the plugins without any errors", func() {
 			// set the execute permissions on the first plugin executable
-			err = filesystem.FS.Chmod(pluginFilePath, filePermissions)
+			err = fs.FS.Chmod(pluginFilePath, filePermissions)
 
 			pluginFileName = "myotherexternalPlugin.sh"
 			pluginFilePath = filepath.Join(pluginPath, "myotherexternalPlugin", "v1", pluginFileName)
 
-			f, err = filesystem.FS.Create(pluginFilePath)
+			f, err = fs.FS.Create(pluginFilePath)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(f).ToNot(BeNil())
 
-			_, err = filesystem.FS.Stat(pluginFilePath)
+			_, err = fs.FS.Stat(pluginFilePath)
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = f.WriteString(testPluginScript)
 			Expect(err).To(Not(HaveOccurred()))
 
 			// set the execute permissions on the second plugin executable
-			err = filesystem.FS.Chmod(pluginFilePath, filePermissions)
+			err = fs.FS.Chmod(pluginFilePath, filePermissions)
 			Expect(err).To(Not(HaveOccurred()))
 
-			_, err = filesystem.FS.Stat(pluginFilePath)
+			_, err = fs.FS.Stat(pluginFilePath)
 			Expect(err).ToNot(HaveOccurred())
 
-			plugins, err = DiscoverExternalPlugins(filesystem.FS)
+			ps, err := DiscoverExternalPlugins(fs.FS)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(plugins).NotTo(BeNil())
-			Expect(plugins).To(HaveLen(2))
+			Expect(ps).NotTo(BeNil())
+			Expect(ps).To(HaveLen(2))
 
-			Expect(plugins[0].Name()).To(Equal("externalPlugin"))
-			Expect(plugins[1].Name()).To(Equal("myotherexternalPlugin"))
+			Expect(ps[0].Name()).To(Equal("externalPlugin"))
+			Expect(ps[1].Name()).To(Equal("myotherexternalPlugin"))
 		})
 
 		Context("that are invalid", func() {
 			BeforeEach(func() {
-				filesystem = machinery.Filesystem{
+				fs = machinery.Filesystem{
 					FS: afero.NewMemMapFs(),
 				}
 
@@ -322,48 +314,47 @@ var _ = Describe("Discover external plugins", func() {
 				pluginFileName = "externalPlugin.sh"
 				pluginFilePath = filepath.Join(pluginPath, "externalPlugin", "v1", pluginFileName)
 
-				err = filesystem.FS.MkdirAll(filepath.Dir(pluginFilePath), 0o700)
+				err = fs.FS.MkdirAll(filepath.Dir(pluginFilePath), 0o700)
 				Expect(err).ToNot(HaveOccurred())
 
-				var file fs.File
-				file, err = filesystem.FS.Create(pluginFilePath)
+				f, err := fs.FS.Create(pluginFilePath)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(file).ToNot(BeNil())
+				Expect(f).ToNot(BeNil())
 
-				_, err = filesystem.FS.Stat(pluginFilePath)
+				_, err = fs.FS.Stat(pluginFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				// set the plugin file permissions to read-only
-				err = filesystem.FS.Chmod(pluginFilePath, 0o444)
+				err = fs.FS.Chmod(pluginFilePath, 0o444)
 				Expect(err).To(Not(HaveOccurred()))
 
-				plugins, err = DiscoverExternalPlugins(filesystem.FS)
+				ps, err := DiscoverExternalPlugins(fs.FS)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("not an executable"))
-				Expect(plugins).To(BeEmpty())
+				Expect(ps).To(BeEmpty())
 			})
 
 			It("should error if the plugin found has an invalid plugin name", func() {
 				pluginFileName = ".sh"
 				pluginFilePath = filepath.Join(pluginPath, "externalPlugin", "v1", pluginFileName)
 
-				err = filesystem.FS.MkdirAll(filepath.Dir(pluginFilePath), 0o700)
+				err = fs.FS.MkdirAll(filepath.Dir(pluginFilePath), 0o700)
 				Expect(err).ToNot(HaveOccurred())
 
-				f, err = filesystem.FS.Create(pluginFilePath)
+				f, err = fs.FS.Create(pluginFilePath)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(f).ToNot(BeNil())
 
-				plugins, err = DiscoverExternalPlugins(filesystem.FS)
+				ps, err := DiscoverExternalPlugins(fs.FS)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("invalid plugin name found"))
-				Expect(plugins).To(BeEmpty())
+				Expect(err.Error()).To(ContainSubstring("Invalid plugin name found"))
+				Expect(ps).To(BeEmpty())
 			})
 		})
 
 		Context("that does not match the plugin root directory name", func() {
 			BeforeEach(func() {
-				filesystem = machinery.Filesystem{
+				fs = machinery.Filesystem{
 					FS: afero.NewMemMapFs(),
 				}
 
@@ -375,18 +366,17 @@ var _ = Describe("Discover external plugins", func() {
 				pluginFileName = "random.sh"
 				pluginFilePath = filepath.Join(pluginPath, "externalPlugin", "v1", pluginFileName)
 
-				err = filesystem.FS.MkdirAll(filepath.Dir(pluginFilePath), 0o700)
+				err = fs.FS.MkdirAll(filepath.Dir(pluginFilePath), 0o700)
 				Expect(err).ToNot(HaveOccurred())
 
-				f, err = filesystem.FS.Create(pluginFilePath)
+				f, err = fs.FS.Create(pluginFilePath)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(f).ToNot(BeNil())
 
-				err = filesystem.FS.Chmod(pluginFilePath, filePermissions)
+				err = fs.FS.Chmod(pluginFilePath, filePermissions)
 				Expect(err).ToNot(HaveOccurred())
 
-				var ps []plugin.Plugin
-				ps, err = DiscoverExternalPlugins(filesystem.FS)
+				ps, err := DiscoverExternalPlugins(fs.FS)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ps).To(BeEmpty())
 			})
@@ -397,10 +387,10 @@ var _ = Describe("Discover external plugins", func() {
 					return "", errPluginsRoot
 				}
 
-				_, err = DiscoverExternalPlugins(filesystem.FS)
+				_, err := DiscoverExternalPlugins(fs.FS)
 				Expect(err).To(HaveOccurred())
 
-				Expect(errors.Unwrap(err)).To(MatchError(errPluginsRoot))
+				Expect(err).To(Equal(errPluginsRoot))
 			})
 
 			It("should skip parsing of directories if plugins root is not a directory", func() {
@@ -408,7 +398,7 @@ var _ = Describe("Discover external plugins", func() {
 					return "externalplugin.sh", nil
 				}
 
-				_, err = DiscoverExternalPlugins(filesystem.FS)
+				_, err := DiscoverExternalPlugins(fs.FS)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -420,7 +410,7 @@ var _ = Describe("Discover external plugins", func() {
 
 				home := os.Getenv("HOME")
 
-				pluginsRoot, err = getPluginsRoot("darwin")
+				pluginsRoot, err := getPluginsRoot("darwin")
 				Expect(err).ToNot(HaveOccurred())
 				expected := filepath.Join(home, "Library", "Application Support", "kubebuilder", "plugins")
 				Expect(pluginsRoot).To(Equal(expected))
@@ -435,27 +425,29 @@ var _ = Describe("Discover external plugins", func() {
 				err = os.Setenv("XDG_CONFIG_HOME", "/some/random/path")
 				Expect(err).ToNot(HaveOccurred())
 
-				pluginsRoot, err = getPluginsRoot(runtime.GOOS)
+				pluginsRoot, err := getPluginsRoot(runtime.GOOS)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pluginsRoot).To(Equal("/some/random/path/kubebuilder/plugins"))
 			})
 
 			It("should return error when home directory is set to empty", func() {
 				_, ok := os.LookupEnv("XDG_CONFIG_HOME")
-				if ok {
+				if !ok {
+				} else {
 					err = os.Setenv("XDG_CONFIG_HOME", "")
 					Expect(err).ToNot(HaveOccurred())
 				}
 
 				_, ok = os.LookupEnv("HOME")
-				if ok {
+				if !ok {
+				} else {
 					err = os.Setenv("HOME", "")
 					Expect(err).ToNot(HaveOccurred())
 				}
 
-				pluginsRoot, err = getPluginsRoot(runtime.GOOS)
+				pluginsroot, err := getPluginsRoot(runtime.GOOS)
 				Expect(err).To(HaveOccurred())
-				Expect(pluginsRoot).To(Equal(""))
+				Expect(pluginsroot).To(Equal(""))
 				Expect(err.Error()).To(ContainSubstring("error retrieving home dir"))
 			})
 		})
@@ -509,24 +501,14 @@ var _ = Describe("CLI options", func() {
 		c   *CLI
 		err error
 
-		projectVersion config.Version
-
-		p   plugin.Plugin
-		np1 plugin.Plugin
-		np2 mockPlugin
-		np3 plugin.Plugin
-		np4 plugin.Plugin
-	)
-
-	BeforeEach(func() {
 		projectVersion = config.Version{Number: 1}
 
-		p = newMockPlugin(pluginName, pluginVersion, projectVersion)
+		p   = newMockPlugin(pluginName, pluginVersion, projectVersion)
 		np1 = newMockPlugin("Plugin", pluginVersion, projectVersion)
 		np2 = mockPlugin{pluginName, plugin.Version{Number: -1}, []config.Version{projectVersion}}
 		np3 = newMockPlugin(pluginName, pluginVersion)
 		np4 = newMockPlugin(pluginName, pluginVersion, config.Version{})
-	})
+	)
 
 	Context("WithCommandName", func() {
 		It("should use provided command name", func() {

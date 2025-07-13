@@ -37,7 +37,7 @@ var (
 	_ plugin.Plugin = mockDeprecatedPlugin{}
 )
 
-type mockPlugin struct {
+type mockPlugin struct { //nolint:maligned
 	name            string
 	version         plugin.Version
 	projectVersions []config.Version
@@ -55,7 +55,7 @@ func (p mockPlugin) Name() string                               { return p.name 
 func (p mockPlugin) Version() plugin.Version                    { return p.version }
 func (p mockPlugin) SupportedProjectVersions() []config.Version { return p.projectVersions }
 
-type mockDeprecatedPlugin struct {
+type mockDeprecatedPlugin struct { //nolint:maligned
 	mockPlugin
 	deprecation string
 }

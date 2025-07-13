@@ -18,6 +18,7 @@ package cmd
 import (
 	"v1/scaffolds"
 
+	"github.com/spf13/pflag"
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugin/external"
 )
 
@@ -36,17 +37,34 @@ func flagsCmd(pr *external.PluginRequest) external.PluginResponse {
 		Flags:      []external.Flag{},
 	}
 
-	switch pr.Command {
-	case "init":
+	// Here is an example of parsing multiple flags from a Kubebuilder external plugin request
+	flagsToParse := pflag.NewFlagSet("flagsFlags", pflag.ContinueOnError)
+	flagsToParse.Bool("init", false, "sets the init flag to true")
+	flagsToParse.Bool("api", false, "sets the api flag to true")
+	flagsToParse.Bool("webhook", false, "sets the webhook flag to true")
+
+	flagsToParse.Parse(pr.Args)
+
+	initFlag, _ := flagsToParse.GetBool("init")
+	apiFlag, _ := flagsToParse.GetBool("api")
+	webhookFlag, _ := flagsToParse.GetBool("webhook")
+
+	// The Phase 2 Plugins implementation will only ever pass a single boolean flag
+	// argument in the JSON request `args` field. The flag will be `--init` if it is
+	// attempting to get the flags for the `init` subcommand, `--api` for `create api`,
+	// `--webhook` for `create webhook`, and `--edit` for `edit`
+	if initFlag {
+		// Add a flag to the JSON response `flags` field that Kubebuilder reads
+		// to ensure it binds to the flags given in the response.
 		pluginResponse.Flags = scaffolds.InitFlags
-	case "create api":
+	} else if apiFlag {
 		pluginResponse.Flags = scaffolds.ApiFlags
-	case "create webhook":
+	} else if webhookFlag {
 		pluginResponse.Flags = scaffolds.WebhookFlags
-	default:
+	} else {
 		pluginResponse.Error = true
 		pluginResponse.ErrorMsgs = []string{
-			"unrecognized command: " + pr.Command,
+			"unrecognized flag",
 		}
 	}
 

@@ -21,16 +21,16 @@ import (
 	"sigs.k8s.io/kubebuilder/v4/pkg/machinery"
 )
 
-var _ machinery.Template = &Service{}
+var _ machinery.Template = &MetricsService{}
 
-// Service scaffolds the Service for metrics in the Helm chart
-type Service struct {
+// MetricsService scaffolds the Service for metrics in the Helm chart
+type MetricsService struct {
 	machinery.TemplateMixin
 	machinery.ProjectNameMixin
 }
 
 // SetTemplateDefaults sets the default template configuration
-func (f *Service) SetTemplateDefaults() error {
+func (f *MetricsService) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join("dist", "chart", "templates", "metrics", "metrics-service.yaml")
 	}
@@ -50,7 +50,6 @@ metadata:
   namespace: {{ "{{ .Release.Namespace }}" }}
   labels:
     {{ "{{- include \"chart.labels\" . | nindent 4 }}" }}
-    control-plane: controller-manager
 spec:
   ports:
     - port: 8443

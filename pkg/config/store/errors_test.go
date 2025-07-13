@@ -31,14 +31,9 @@ func TestConfigStore(t *testing.T) {
 
 var _ = Describe("LoadError", func() {
 	var (
-		wrapped error
-		err     LoadError
-	)
-
-	BeforeEach(func() {
 		wrapped = fmt.Errorf("error message")
-		err = LoadError{Err: wrapped}
-	})
+		err     = LoadError{Err: wrapped}
+	)
 
 	Context("Error", func() {
 		It("should return the correct error message", func() {
@@ -55,14 +50,9 @@ var _ = Describe("LoadError", func() {
 
 var _ = Describe("SaveError", func() {
 	var (
-		wrapped error
-		err     SaveError
-	)
-
-	BeforeEach(func() {
 		wrapped = fmt.Errorf("error message")
-		err = SaveError{Err: wrapped}
-	})
+		err     = SaveError{Err: wrapped}
+	)
 
 	Context("Error", func() {
 		It("should return the correct error message", func() {

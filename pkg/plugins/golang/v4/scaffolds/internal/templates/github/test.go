@@ -30,15 +30,13 @@ type TestCi struct {
 	machinery.BoilerplateMixin
 }
 
-// SetTemplateDefaults implements machinery.Template
+// SetTemplateDefaults implements file.Template
 func (f *TestCi) SetTemplateDefaults() error {
 	if f.Path == "" {
 		f.Path = filepath.Join(".github", "workflows", "test.yml")
 	}
 
 	f.TemplateBody = testCiTemplate
-
-	f.IfExistsAction = machinery.SkipFile
 
 	return nil
 }
@@ -60,7 +58,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: '~1.22'
 
       - name: Running Tests
         run: |
