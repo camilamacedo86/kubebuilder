@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -111,6 +112,74 @@ var _ = Describe("Helm v2-alpha Plugin", func() {
 
 			By("verifying files are preserved when not using --force")
 			validateFilePreservation(kbc, "custom-charts")
+		})
+
+		It("should propagate customized metrics and webhook ports from kustomize", func() {
+			const (
+				customMetricsPort          = "9555"
+				customWebhookServicePort   = "9666"
+				customWebhookContainerPort = "9777"
+			)
+
+			By("initializing a project with webhooks")
+			initBasicProject(kbc)
+			createTestResources(kbc)
+			createWebhookResources(kbc)
+
+			By("customizing kustomize manifests with new ports")
+			metricsPatch := filepath.Join(kbc.Dir, "config", "default", "manager_metrics_patch.yaml")
+			Expect(pluginutil.ReplaceInFile(metricsPatch, "--metrics-bind-address=:8443", "--metrics-bind-address=:"+customMetricsPort)).To(Succeed())
+
+			metricsService := filepath.Join(kbc.Dir, "config", "default", "metrics_service.yaml")
+			Expect(pluginutil.ReplaceInFile(metricsService, "port: 8443", "port: "+customMetricsPort)).To(Succeed())
+			Expect(pluginutil.ReplaceInFile(metricsService, "targetPort: 8443", "targetPort: "+customMetricsPort)).To(Succeed())
+
+			managerWebhookPatch := filepath.Join(kbc.Dir, "config", "default", "manager_webhook_patch.yaml")
+			Expect(pluginutil.ReplaceInFile(managerWebhookPatch, "containerPort: 9443", "containerPort: "+customWebhookContainerPort)).To(Succeed())
+
+			webhookService := filepath.Join(kbc.Dir, "config", "webhook", "service.yaml")
+			Expect(pluginutil.ReplaceInFile(webhookService, "port: 443", "port: "+customWebhookServicePort)).To(Succeed())
+			Expect(pluginutil.ReplaceInFile(webhookService, "targetPort: 9443", "targetPort: "+customWebhookContainerPort)).To(Succeed())
+
+			By("building installer manifest with customized ports")
+			Expect(kbc.Make("build-installer")).To(Succeed())
+
+			By("applying helm v2-alpha plugin")
+			Expect(kbc.EditHelmPlugin()).To(Succeed())
+
+			chartPath := filepath.Join(kbc.Dir, "dist", "chart")
+
+			By("verifying values.yaml contains customized defaults")
+			valuesPath := filepath.Join(chartPath, "values.yaml")
+			valuesContent, err := os.ReadFile(valuesPath)
+			Expect(err).NotTo(HaveOccurred())
+			values := string(valuesContent)
+			Expect(values).To(ContainSubstring("port: " + customMetricsPort))
+			Expect(values).To(ContainSubstring("servicePort: " + customWebhookServicePort))
+			Expect(values).To(ContainSubstring("containerPort: " + customWebhookContainerPort))
+
+			By("verifying templates reference Helm values instead of raw ports")
+			managerTemplate := filepath.Join(chartPath, "templates", "manager", "manager.yaml")
+			managerContent, err := os.ReadFile(managerTemplate)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(managerContent)).To(ContainSubstring("--metrics-bind-address=:{{ .Values.metrics.port }}"))
+			Expect(string(managerContent)).To(ContainSubstring("containerPort: {{ .Values.webhook.containerPort }}"))
+			Expect(string(managerContent)).NotTo(ContainSubstring(customMetricsPort))
+			Expect(string(managerContent)).NotTo(ContainSubstring(customWebhookContainerPort))
+
+			metricsTemplate := filepath.Join(chartPath, "templates", "metrics", "controller-manager-metrics-service.yaml")
+			metricsContent, err := os.ReadFile(metricsTemplate)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(metricsContent)).To(ContainSubstring("port: {{ .Values.metrics.port }}"))
+			Expect(string(metricsContent)).NotTo(ContainSubstring(customMetricsPort))
+
+			webhookTemplate := filepath.Join(chartPath, "templates", "webhook", "webhook-service.yaml")
+			webhookContent, err := os.ReadFile(webhookTemplate)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(webhookContent)).To(ContainSubstring("port: {{ .Values.webhook.servicePort }}"))
+			Expect(string(webhookContent)).To(ContainSubstring("targetPort: {{ .Values.webhook.containerPort }}"))
+			Expect(string(webhookContent)).NotTo(ContainSubstring(customWebhookServicePort))
+			Expect(string(webhookContent)).NotTo(ContainSubstring(customWebhookContainerPort))
 		})
 	})
 })

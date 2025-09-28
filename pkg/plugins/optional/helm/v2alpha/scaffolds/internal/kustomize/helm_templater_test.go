@@ -182,6 +182,81 @@ spec:
 			Expect(result).NotTo(ContainSubstring("namespace: test-project-system"))
 		})
 
+		It("should template metrics service ports using Helm values", func() {
+			serviceResource := &unstructured.Unstructured{}
+			serviceResource.SetAPIVersion("v1")
+			serviceResource.SetKind("Service")
+			serviceResource.SetName("test-project-controller-manager-metrics-service")
+
+			content := `apiVersion: v1
+kind: Service
+metadata:
+  name: test-project-controller-manager-metrics-service
+spec:
+  ports:
+    - name: https
+      port: 9555
+      protocol: TCP
+      targetPort: 9555`
+
+			result := templater.ApplyHelmSubstitutions(content, serviceResource)
+
+			Expect(result).To(ContainSubstring("port: {{ .Values.metrics.port }}"))
+			Expect(result).To(ContainSubstring("targetPort: {{ .Values.metrics.port }}"))
+			Expect(templater.metricsPortValue()).To(Equal("9555"))
+		})
+
+		It("should template webhook service ports using Helm values", func() {
+			serviceResource := &unstructured.Unstructured{}
+			serviceResource.SetAPIVersion("v1")
+			serviceResource.SetKind("Service")
+			serviceResource.SetName("test-project-webhook-service")
+
+			content := `apiVersion: v1
+kind: Service
+metadata:
+  name: test-project-webhook-service
+spec:
+  ports:
+    - port: 9666
+      protocol: TCP
+      targetPort: 9777`
+
+			result := templater.ApplyHelmSubstitutions(content, serviceResource)
+
+			Expect(result).To(ContainSubstring("port: {{ .Values.webhook.servicePort }}"))
+			Expect(result).To(ContainSubstring("targetPort: {{ .Values.webhook.containerPort }}"))
+			Expect(templater.webhookServicePortValue()).To(Equal("9666"))
+			Expect(templater.webhookContainerPortValue()).To(Equal("9777"))
+		})
+
+		It("should template deployment ports and flags using Helm values", func() {
+			deploymentResource := &unstructured.Unstructured{}
+			deploymentResource.SetAPIVersion("apps/v1")
+			deploymentResource.SetKind("Deployment")
+			deploymentResource.SetName("test-project-controller-manager")
+
+			content := `apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+      - args:
+        - --metrics-bind-address=:9888
+        ports:
+        - containerPort: 9777
+          name: webhook-server
+          protocol: TCP`
+
+			result := templater.ApplyHelmSubstitutions(content, deploymentResource)
+
+			Expect(result).To(ContainSubstring("--metrics-bind-address=:{{ .Values.metrics.port }}"))
+			Expect(result).To(ContainSubstring("containerPort: {{ .Values.webhook.containerPort }}"))
+			Expect(templater.metricsPortValue()).To(Equal("9888"))
+			Expect(templater.webhookContainerPortValue()).To(Equal("9777"))
+		})
+
 		It("should preserve annotations without modification", func() {
 			webhookResource := &unstructured.Unstructured{}
 			webhookResource.SetAPIVersion("admissionregistration.k8s.io/v1")

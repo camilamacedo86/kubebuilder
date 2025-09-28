@@ -18,6 +18,7 @@ package templates
 
 import (
 	"bytes"
+	"fmt"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
@@ -42,6 +43,12 @@ type HelmValuesBasic struct {
 	HasWebhooks bool
 	// HasMetrics is true when metrics service/monitor were found in the config
 	HasMetrics bool
+	// MetricsPort is the detected metrics port from kustomize output
+	MetricsPort string
+	// WebhookServicePort is the detected webhook service port from kustomize output
+	WebhookServicePort string
+	// WebhookContainerPort is the detected webhook container port from kustomize output
+	WebhookContainerPort string
 }
 
 // SetTemplateDefaults implements machinery.Template
@@ -107,19 +114,21 @@ crd:
 
 	// Metrics configuration (enable if metrics artifacts detected in kustomize output)
 	if f.HasMetrics {
-		buf.WriteString(`# Controller metrics endpoint.
+		buf.WriteString(fmt.Sprintf(`# Controller metrics endpoint.
 # Enable to expose /metrics endpoint with RBAC protection.
 metrics:
   enable: true
+  port: %s
 
-`)
+`, f.metricsPortValue()))
 	} else {
-		buf.WriteString(`# Controller metrics endpoint.
+		buf.WriteString(fmt.Sprintf(`# Controller metrics endpoint.
 # Enable to expose /metrics endpoint with RBAC protection.
 metrics:
   enable: false
+  port: %s
 
-`)
+`, f.metricsPortValue()))
 	}
 
 	// Cert-manager configuration - only if certificates/webhooks are present
@@ -132,6 +141,15 @@ certManager:
 `)
 	}
 
+	buf.WriteString(fmt.Sprintf(`# Webhook configuration.
+# Controls webhook deployment and service ports.
+webhook:
+  enable: %t
+  servicePort: %s
+  containerPort: %s
+
+`, f.HasWebhooks, f.webhookServicePortValue(), f.webhookContainerPortValue()))
+
 	// Prometheus configuration
 	buf.WriteString(`# Prometheus ServiceMonitor for metrics scraping.
 # Requires prometheus-operator to be installed in the cluster.
@@ -141,6 +159,27 @@ prometheus:
 
 	buf.WriteString("\n")
 	return buf.String()
+}
+
+func (f *HelmValuesBasic) metricsPortValue() string {
+	if f.MetricsPort != "" {
+		return f.MetricsPort
+	}
+	return "8443"
+}
+
+func (f *HelmValuesBasic) webhookServicePortValue() string {
+	if f.WebhookServicePort != "" {
+		return f.WebhookServicePort
+	}
+	return "443"
+}
+
+func (f *HelmValuesBasic) webhookContainerPortValue() string {
+	if f.WebhookContainerPort != "" {
+		return f.WebhookContainerPort
+	}
+	return "9443"
 }
 
 // addDeploymentConfig adds extracted deployment configuration to the values

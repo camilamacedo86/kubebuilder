@@ -46,6 +46,14 @@ var _ = Describe("HelmValuesBasic", func() {
 			Expect(content).To(ContainSubstring("enable: true"))
 		})
 
+		It("should include webhook ports under webhook block", func() {
+			content := valuesTemplate.GetBody()
+			Expect(content).To(ContainSubstring("webhook:"))
+			Expect(content).To(ContainSubstring("enable: true"))
+			Expect(content).To(ContainSubstring("servicePort:"))
+			Expect(content).To(ContainSubstring("containerPort:"))
+		})
+
 		It("should include all basic sections", func() {
 			content := valuesTemplate.GetBody()
 
@@ -81,6 +89,12 @@ var _ = Describe("HelmValuesBasic", func() {
 			Expect(content).To(ContainSubstring("metrics:"))
 			Expect(content).To(ContainSubstring("prometheus:"))
 			Expect(content).To(ContainSubstring("rbacHelpers:"))
+		})
+
+		It("should include webhook block disabled by default", func() {
+			content := valuesTemplate.GetBody()
+			Expect(content).To(ContainSubstring("webhook:"))
+			Expect(content).To(ContainSubstring("enable: false"))
 		})
 	})
 
@@ -138,6 +152,24 @@ var _ = Describe("HelmValuesBasic", func() {
 		It("should include deployment configuration", func() {
 			content := valuesTemplate.GetBody()
 			Expect(content).To(ContainSubstring("manager:"))
+		})
+	})
+
+	Context("with custom port configuration", func() {
+		It("should use provided metrics and webhook ports", func() {
+			valuesTemplate = &HelmValuesBasic{
+				HasWebhooks:          true,
+				MetricsPort:          "9555",
+				WebhookServicePort:   "9666",
+				WebhookContainerPort: "9777",
+			}
+			valuesTemplate.InjectProjectName("test-project")
+			Expect(valuesTemplate.SetTemplateDefaults()).To(Succeed())
+
+			content := valuesTemplate.GetBody()
+			Expect(content).To(ContainSubstring("port: 9555"))
+			Expect(content).To(ContainSubstring("servicePort: 9666"))
+			Expect(content).To(ContainSubstring("containerPort: 9777"))
 		})
 	})
 

@@ -111,6 +111,7 @@ func (s *editKustomizeScaffolder) Scaffold() error {
 	}
 	chartConverter := kustomize.NewChartConverter(resources, s.config.GetProjectName(), s.outputDir)
 	deploymentConfig := chartConverter.ExtractDeploymentConfig()
+	portsConfig := chartConverter.PortsConfig()
 
 	// Create scaffold for standard Helm chart files
 	scaffold := machinery.NewScaffold(s.fs, machinery.WithConfig(s.config))
@@ -120,11 +121,14 @@ func (s *editKustomizeScaffolder) Scaffold() error {
 		&github.HelmChartCI{},                        // GitHub Actions workflow for chart testing
 		&templates.HelmChart{OutputDir: s.outputDir}, // Chart.yaml metadata
 		&templates.HelmValuesBasic{ // values.yaml with dynamic config
-			HasWebhooks:      hasWebhooks,
-			HasMetrics:       hasMetrics,
-			DeploymentConfig: deploymentConfig,
-			OutputDir:        s.outputDir,
-			Force:            s.force,
+			HasWebhooks:          hasWebhooks,
+			HasMetrics:           hasMetrics,
+			DeploymentConfig:     deploymentConfig,
+			OutputDir:            s.outputDir,
+			Force:                s.force,
+			MetricsPort:          portsConfig.MetricsPort,
+			WebhookServicePort:   portsConfig.WebhookServicePort,
+			WebhookContainerPort: portsConfig.WebhookContainerPort,
 		},
 		&templates.HelmIgnore{OutputDir: s.outputDir},       // .helmignore file
 		&charttemplates.HelmHelpers{OutputDir: s.outputDir}, // _helpers.tpl template functions

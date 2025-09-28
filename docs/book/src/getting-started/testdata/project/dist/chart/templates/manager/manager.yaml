@@ -23,7 +23,7 @@ spec:
         spec:
             containers:
                 - args:
-                    - --metrics-bind-address=:8443
+                    - --metrics-bind-address=:{{ .Values.metrics.port }}
                     - --leader-elect
                     - --health-probe-bind-address=:8081
                   command:

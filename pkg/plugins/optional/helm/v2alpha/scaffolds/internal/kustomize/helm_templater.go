@@ -48,13 +48,54 @@ const (
 // HelmTemplater handles converting YAML content to Helm templates
 type HelmTemplater struct {
 	projectName string
+
+	metricsPort          string
+	webhookServicePort   string
+	webhookContainerPort string
 }
 
 // NewHelmTemplater creates a new Helm templater
 func NewHelmTemplater(projectName string) *HelmTemplater {
 	return &HelmTemplater{
-		projectName: projectName,
+		projectName:          projectName,
+		metricsPort:          "",
+		webhookServicePort:   "",
+		webhookContainerPort: "",
 	}
+}
+
+// ConfigurePorts sets the default port configuration derived from kustomize manifests.
+func (t *HelmTemplater) ConfigurePorts(cfg PortsConfig) {
+	if cfg.MetricsPort != "" {
+		t.metricsPort = cfg.MetricsPort
+	}
+	if cfg.WebhookServicePort != "" {
+		t.webhookServicePort = cfg.WebhookServicePort
+	}
+	if cfg.WebhookContainerPort != "" {
+		t.webhookContainerPort = cfg.WebhookContainerPort
+	}
+}
+
+func (t *HelmTemplater) metricsPortValue() string {
+	if t.metricsPort != "" {
+		return t.metricsPort
+	}
+	return "8443"
+}
+
+func (t *HelmTemplater) webhookServicePortValue() string {
+	if t.webhookServicePort != "" {
+		return t.webhookServicePort
+	}
+	return "443"
+}
+
+func (t *HelmTemplater) webhookContainerPortValue() string {
+	if t.webhookContainerPort != "" {
+		return t.webhookContainerPort
+	}
+	return "9443"
 }
 
 // ApplyHelmSubstitutions converts YAML content to use Helm template syntax
@@ -79,6 +120,10 @@ func (t *HelmTemplater) ApplyHelmSubstitutions(yamlContent string, resource *uns
 
 	// Apply resource-specific substitutions
 	yamlContent = t.substituteRBACValues(yamlContent)
+
+	if resource.GetKind() == kindService {
+		yamlContent = t.templateServicePorts(yamlContent, resource)
+	}
 
 	// Apply deployment-specific templating
 	if resource.GetKind() == "Deployment" {
@@ -200,6 +245,67 @@ func (t *HelmTemplater) templateServiceMonitorNames(yamlContent string, resource
 	return yamlContent
 }
 
+// templateServicePorts converts hardcoded service ports into configurable Helm values
+func (t *HelmTemplater) templateServicePorts(yamlContent string, resource *unstructured.Unstructured) string {
+	name := resource.GetName()
+
+	// Metrics service ports
+	if strings.Contains(name, "metrics") {
+		portPattern := regexp.MustCompile(`(?m)^(\s*(?:-\s*)?port:\s*)(\d+)`)
+		yamlContent = portPattern.ReplaceAllStringFunc(yamlContent, func(match string) string {
+			res := portPattern.FindStringSubmatch(match)
+			if len(res) >= 3 {
+				if t.metricsPort == "" {
+					t.metricsPort = res[2]
+				}
+				return res[1] + "{{ .Values.metrics.port }}"
+			}
+			return match
+		})
+
+		targetPattern := regexp.MustCompile(`(?m)^(\s*targetPort:\s*)(\d+)`)
+		yamlContent = targetPattern.ReplaceAllStringFunc(yamlContent, func(match string) string {
+			res := targetPattern.FindStringSubmatch(match)
+			if len(res) >= 3 {
+				if t.metricsPort == "" {
+					t.metricsPort = res[2]
+				}
+				return res[1] + "{{ .Values.metrics.port }}"
+			}
+			return match
+		})
+	}
+
+	// Webhook service ports
+	if strings.Contains(name, "webhook") {
+		portPattern := regexp.MustCompile(`(?m)^(\s*(?:-\s*)?port:\s*)(\d+)`)
+		yamlContent = portPattern.ReplaceAllStringFunc(yamlContent, func(match string) string {
+			res := portPattern.FindStringSubmatch(match)
+			if len(res) >= 3 {
+				if t.webhookServicePort == "" {
+					t.webhookServicePort = res[2]
+				}
+				return res[1] + "{{ .Values.webhook.servicePort }}"
+			}
+			return match
+		})
+
+		targetPattern := regexp.MustCompile(`(?m)^(\s*targetPort:\s*)(\d+)`)
+		yamlContent = targetPattern.ReplaceAllStringFunc(yamlContent, func(match string) string {
+			res := targetPattern.FindStringSubmatch(match)
+			if len(res) >= 3 {
+				if t.webhookContainerPort == "" {
+					t.webhookContainerPort = res[2]
+				}
+				return res[1] + "{{ .Values.webhook.containerPort }}"
+			}
+			return match
+		})
+	}
+
+	return yamlContent
+}
+
 // addHelmLabelsAndAnnotations replaces kustomize managed-by labels with Helm equivalents
 func (t *HelmTemplater) addHelmLabelsAndAnnotations(yamlContent string, _ *unstructured.Unstructured) string {
 	// Replace app.kubernetes.io/managed-by: kustomize with Helm template
@@ -224,6 +330,8 @@ func (t *HelmTemplater) templateDeploymentFields(yamlContent string) string {
 	yamlContent = t.templateSecurityContexts(yamlContent)
 	yamlContent = t.templateVolumeMounts(yamlContent)
 	yamlContent = t.templateVolumes(yamlContent)
+	yamlContent = t.templateMetricsConfiguration(yamlContent)
+	yamlContent = t.templateWebhookConfiguration(yamlContent)
 
 	return yamlContent
 }
@@ -260,6 +368,38 @@ func (t *HelmTemplater) templateVolumeMounts(yamlContent string) string {
 func (t *HelmTemplater) templateVolumes(yamlContent string) string {
 	// For webhook volumes, we keep them as-is since they're required for webhook functionality
 	// They will be conditionally included based on webhook configuration
+	return yamlContent
+}
+
+// templateMetricsConfiguration makes metrics-related settings configurable via values.yaml
+func (t *HelmTemplater) templateMetricsConfiguration(yamlContent string) string {
+	metricsRegex := regexp.MustCompile(`--metrics-bind-address=:[0-9]+`)
+	yamlContent = metricsRegex.ReplaceAllStringFunc(yamlContent, func(match string) string {
+		parts := strings.Split(match, ":")
+		port := parts[len(parts)-1]
+		if t.metricsPort == "" {
+			t.metricsPort = port
+		}
+		return "--metrics-bind-address=:{{ .Values.metrics.port }}"
+	})
+
+	return yamlContent
+}
+
+// templateWebhookConfiguration makes webhook-related ports configurable via values.yaml
+func (t *HelmTemplater) templateWebhookConfiguration(yamlContent string) string {
+	containerPortPattern := regexp.MustCompile(`(?m)^(\s*-\s*containerPort:\s*)(\d+)`)
+	yamlContent = containerPortPattern.ReplaceAllStringFunc(yamlContent, func(match string) string {
+		res := containerPortPattern.FindStringSubmatch(match)
+		if len(res) >= 3 {
+			if t.webhookContainerPort == "" {
+				t.webhookContainerPort = res[2]
+			}
+			return res[1] + "{{ .Values.webhook.containerPort }}"
+		}
+		return match
+	})
+
 	return yamlContent
 }
 

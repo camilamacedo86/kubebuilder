@@ -18,6 +18,7 @@ package kustomize
 
 import (
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -34,12 +35,30 @@ type ChartConverter struct {
 	organizer *ResourceOrganizer
 	templater *HelmTemplater
 	writer    *ChartWriter
+	ports     PortsConfig
+}
+
+// PortsConfig captures port configuration detected from kustomize manifests.
+type PortsConfig struct {
+	MetricsPort          string
+	WebhookServicePort   string
+	WebhookContainerPort string
+}
+
+func defaultPortsConfig() PortsConfig {
+	return PortsConfig{
+		MetricsPort:          "8443",
+		WebhookServicePort:   "443",
+		WebhookContainerPort: "9443",
+	}
 }
 
 // NewChartConverter creates a new chart converter with all necessary components
 func NewChartConverter(resources *ParsedResources, projectName, outputDir string) *ChartConverter {
 	organizer := NewResourceOrganizer(resources)
 	templater := NewHelmTemplater(projectName)
+	ports := calculatePortsConfig(resources)
+	templater.ConfigurePorts(ports)
 	writer := NewChartWriter(templater, outputDir)
 
 	return &ChartConverter{
@@ -49,7 +68,13 @@ func NewChartConverter(resources *ParsedResources, projectName, outputDir string
 		organizer:   organizer,
 		templater:   templater,
 		writer:      writer,
+		ports:       ports,
 	}
+}
+
+// PortsConfig returns the detected port configuration.
+func (c *ChartConverter) PortsConfig() PortsConfig {
+	return c.ports
 }
 
 // WriteChartFiles converts all resources to Helm chart templates and writes them to the filesystem
@@ -158,4 +183,86 @@ func (c *ChartConverter) ExtractDeploymentConfig() map[string]interface{} {
 	}
 
 	return config
+}
+
+func calculatePortsConfig(resources *ParsedResources) PortsConfig {
+	ports := defaultPortsConfig()
+
+	if resources == nil {
+		return ports
+	}
+
+	// Extract metrics port from deployment args if available
+	if resources.Deployment != nil {
+		if containersVal, found, err := unstructured.NestedFieldNoCopy(resources.Deployment.Object,
+			"spec", "template", "spec", "containers"); found && err == nil {
+			if containers, ok := containersVal.([]interface{}); ok && len(containers) > 0 {
+				if container, ok := containers[0].(map[string]interface{}); ok {
+					if args, ok := container["args"].([]interface{}); ok {
+						for _, arg := range args {
+							if s, ok := arg.(string); ok && strings.Contains(s, "--metrics-bind-address=") {
+								if idx := strings.LastIndex(s, ":"); idx != -1 && idx+1 < len(s) {
+									port := s[idx+1:]
+									if port != "" {
+										ports.MetricsPort = port
+									}
+								}
+							}
+						}
+					}
+					if cPorts, ok := container["ports"].([]interface{}); ok {
+						for _, p := range cPorts {
+							pm, ok := p.(map[string]interface{})
+							if !ok {
+								continue
+							}
+							if name, ok := pm["name"].(string); ok && strings.Contains(name, "webhook") {
+								if val, ok := pm["containerPort"].(int64); ok {
+									ports.WebhookContainerPort = fmt.Sprintf("%d", val)
+								}
+							}
+							if val, ok := pm["containerPort"].(int64); ok && len(cPorts) == 1 {
+								ports.WebhookContainerPort = fmt.Sprintf("%d", val)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Extract metrics and webhook service ports from services
+	for _, svc := range resources.Services {
+		name := svc.GetName()
+		portsVal, found, err := unstructured.NestedFieldNoCopy(svc.Object, "spec", "ports")
+		if !found || err != nil {
+			continue
+		}
+		portsList, ok := portsVal.([]interface{})
+		if !ok || len(portsList) == 0 {
+			continue
+		}
+
+		firstPort, ok := portsList[0].(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		if strings.Contains(name, "metrics") {
+			if val, ok := firstPort["port"].(int64); ok {
+				ports.MetricsPort = fmt.Sprintf("%d", val)
+			}
+		}
+
+		if strings.Contains(name, "webhook") {
+			if val, ok := firstPort["port"].(int64); ok {
+				ports.WebhookServicePort = fmt.Sprintf("%d", val)
+			}
+			if target, ok := firstPort["targetPort"].(int64); ok {
+				ports.WebhookContainerPort = fmt.Sprintf("%d", target)
+			}
+		}
+	}
+
+	return ports
 }

@@ -52,6 +52,14 @@ crd:
 # Enable to expose /metrics endpoint with RBAC protection.
 metrics:
   enable: true
+  port: 8443
+
+# Webhook configuration.
+# Controls webhook deployment and service ports.
+webhook:
+  enable: false
+  servicePort: 443
+  containerPort: 9443
 
 # Prometheus ServiceMonitor for metrics scraping.
 # Requires prometheus-operator to be installed in the cluster.
