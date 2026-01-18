@@ -53,6 +53,9 @@ var _ = Describe("kubebuilder", func() {
 			kbc, err = utils.NewTestContext(pluginutil.KubebuilderBinName, "GO111MODULE=on")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(kbc.Prepare()).To(Succeed())
+
+			By("verifying Docker daemon is healthy before test")
+			Expect(kbc.CheckDockerHealth()).To(Succeed(), "Docker daemon should be healthy at test start")
 		})
 
 		AfterEach(func() {
@@ -64,6 +67,11 @@ var _ = Describe("kubebuilder", func() {
 
 			By("removing controller image and working dir")
 			kbc.Destroy()
+
+			By("ensuring Docker daemon is healthy for next test")
+			// Wait briefly for Docker to stabilize after cleanup
+			time.Sleep(5 * time.Second)
+			_ = kbc.CheckDockerHealth()
 		})
 
 		It("should generate a runnable project using webhooks and installed with the HelmChart", func() {
@@ -166,6 +174,10 @@ func runHelm(kbc *utils.TestContext, hasWebhook, hasMetrics, hasNetworkPolicies 
 	By("run make all")
 	err = kbc.Make("all")
 	Expect(err).NotTo(HaveOccurred())
+
+	By("verifying Docker daemon is healthy before building image")
+	err = kbc.CheckDockerHealth()
+	Expect(err).NotTo(HaveOccurred(), "Docker daemon should be healthy before image build")
 
 	By("building the controller image")
 	err = kbc.Make("docker-build", "IMG="+kbc.ImageName)
