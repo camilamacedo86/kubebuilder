@@ -33,6 +33,7 @@ var _ plugin.InitSubcommand = &initSubcommand{}
 type initSubcommand struct {
 	config      config.Config
 	useGHModels bool
+	notifyOnly  bool
 }
 
 func (p *initSubcommand) UpdateMetadata(cliMeta plugin.CLIMetadata, subcmdMeta *plugin.SubcommandMetadata) {
@@ -43,12 +44,17 @@ func (p *initSubcommand) UpdateMetadata(cliMeta plugin.CLIMetadata, subcmdMeta *
 
   # Initialize with GitHub Models enabled (requires repo permissions)
   %[1]s init --plugins=%[2]s --use-gh-models
+
+  # Initialize with notify-only workflow (open Issue only, no PR or branch push)
+  %[1]s init --plugins=%[2]s --notify-only
 `, cliMeta.CommandName, plugin.KeyFor(Plugin{}))
 }
 
 func (p *initSubcommand) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&p.useGHModels, "use-gh-models", false,
 		"enable GitHub Models AI summary in the scaffolded workflow (requires GitHub Models permissions)")
+	fs.BoolVar(&p.notifyOnly, "notify-only", false,
+		"scaffold a notify-only workflow that opens an Issue (no PR, no branch push); uses only issues: write permission")
 }
 
 func (p *initSubcommand) InjectConfig(c config.Config) error {
@@ -57,11 +63,12 @@ func (p *initSubcommand) InjectConfig(c config.Config) error {
 }
 
 func (p *initSubcommand) Scaffold(fs machinery.Filesystem) error {
-	if err := insertPluginMetaToConfig(p.config, PluginConfig{UseGHModels: p.useGHModels}); err != nil {
+	cfg := PluginConfig{UseGHModels: p.useGHModels, NotifyOnly: p.notifyOnly}
+	if err := insertPluginMetaToConfig(p.config, cfg); err != nil {
 		return fmt.Errorf("error inserting project plugin meta to configuration: %w", err)
 	}
 
-	scaffolder := scaffolds.NewInitScaffolder(p.useGHModels)
+	scaffolder := scaffolds.NewInitScaffolder(p.useGHModels, p.notifyOnly)
 	scaffolder.InjectFS(fs)
 	if err := scaffolder.Scaffold(); err != nil {
 		return fmt.Errorf("error scaffolding init subcommand: %w", err)

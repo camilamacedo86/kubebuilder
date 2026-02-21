@@ -68,8 +68,9 @@ The command creates three temporary branches:
     - `--conflict-message`: customize the commit message when conflicts occur.
     - `--push`: push the result to `origin` automatically.
     - `--git-config`: sets git configurations.
-    - `--open-gh-issue`: create a GitHub issue with a checklist and compare link (requires `gh`).
-    - `--use-gh-models`: add an AI overview **comment** to that issue using `gh models`
+    - `--open-gh-pr`: create a GitHub Pull Request from the output branch (requires `gh` and `--push`).
+    - `--open-gh-issue`: create a GitHub issue notifying that a new release is available and recommending to run the update locally (requires `gh`).
+    - `--use-gh-models`: add an AI overview **comment** to that issue using `gh models` (requires `--open-gh-issue`).
 
 ### Step 5: Cleanup
 - Once the output branch is ready, all the temporary working branches are deleted.
@@ -157,16 +158,27 @@ make manifests generate fmt vet lint-fix
 make all
 ```
 
-## Using with GitHub Issues (`--open-gh-issue`) and AI (`--use-gh-models`) assistance
+## Creating a Pull Request (`--open-gh-pr`) and an Issue (`--open-gh-issue`)
 
-Pass `--open-gh-issue` to have the command create a GitHub **Issue** in your repository
-to assist with the update. Also, if you also pass `--use-gh-models`, the tool posts a follow-up comment
-on that Issue with an AI-generated overview of the most important changes plus brief conflict-resolution
-guidance.
+The [AutoUpdate Plugin][autoupdate-plugin] workflow uses **both** by default: **`--open-gh-pr`** (with **`--push`**) creates a GitHub **Pull Request**, and **`--open-gh-issue`** creates an **Issue** that notifies about the release. You can use either or both when running the command locally.
+
+Use **`--open-gh-issue`** alone (without `--push` or `--open-gh-pr`) to only open an Issue that recommends running `kubebuilder alpha update` locally; this is for reduced-permission workflows (e.g. `issues: write` only).
+
+If you pass **`--use-gh-models`** (requires `--open-gh-issue` or `--open-gh-pr`), the tool generates **one** AI overview of the scaffold changes and conflict-resolution guidance, and uses it for **both** the **PR description** (when creating a PR) and as an **Issue comment** (when creating an Issue).
 
 ### Examples
 
-Create an Issue with a compare link:
+Create a Pull Request and an Issue (default for the AutoUpdate workflow):
+```shell
+kubebuilder alpha update --push --open-gh-pr --open-gh-issue
+```
+
+Same with AI summary used for both the PR description and the Issue comment:
+```shell
+kubebuilder alpha update --push --open-gh-pr --open-gh-issue --use-gh-models
+```
+
+Create an Issue that recommends running the update locally (no PR, no branch push):
 ```shell
 kubebuilder alpha update --open-gh-issue
 ```
@@ -178,7 +190,7 @@ kubebuilder alpha update --open-gh-issue --use-gh-models
 
 ### What you’ll see
 
-The command opens an Issue that links to the diff so you can create the PR and review it, for example:
+With `--open-gh-pr`, a Pull Request is created. With `--open-gh-issue`, the command opens an Issue that notifies about the new release and recommends running the update locally, for example:
 
 <img width="638" height="482" alt="Example Issue" src="https://github.com/user-attachments/assets/589fd16b-7709-4cd5-b169-fd53d69790d4" />
 
@@ -191,7 +203,7 @@ and to suggest resolutions if conflicts are encountered, as in the following exa
 
 ### Automation
 
-This integrates cleanly with automation. The [`autoupdate.kubebuilder.io/v1-alpha`][autoupdate-plugin] plugin can scaffold a GitHub Actions workflow that runs the command on a schedule (e.g., weekly). When a new Kubebuilder release is available, it opens an Issue with a compare link so you can create the PR and review it.
+This integrates cleanly with automation. The [AutoUpdate Plugin][autoupdate-plugin] scaffolds a GitHub Actions workflow that runs the command on a schedule (e.g., weekly). By default it uses **`--open-gh-pr`** and **`--open-gh-issue`**, so when a new Kubebuilder release is available the workflow creates and pushes the update branch, opens a **Pull Request**, and opens an **Issue**. Use **`--notify-only`** when scaffolding the plugin for a reduced-permission workflow that only opens an Issue.
 
 ## Changing Extra Git configs only during the run (does not change your ~/.gitconfig)_
 
@@ -241,13 +253,14 @@ We use that value to pick the correct CLI for re-scaffolding.
 | `--from-version`   | Kubebuilder release to update **from** (e.g., `v4.6.0`). If unset, read from the `PROJECT` file when possible.                                                                                                                          |
 | `--git-config`     | Repeatable. Pass per-invocation Git config as `-c key=value`. **Default** (if omitted): `-c merge.renameLimit=999999 -c diff.renameLimit=999999`. Your configs are applied on top. To disable defaults, include `--git-config disable`. |
 | `--merge-message`            | Custom commit message for successful merges (no conflicts). Defaults to `chore(kubebuilder): update scaffold <from> -> <to>`.                                                                                                           |
-| `--open-gh-issue`  | Create a GitHub issue with a pre-filled checklist and compare link after the update completes (requires `gh`).                                                                                                                          |
+| `--open-gh-issue`  | Create a GitHub issue notifying that a new release is available and recommending to run `kubebuilder alpha update` locally (requires `gh`).                                                                                                 |
+| `--open-gh-pr`     | Create a GitHub Pull Request from the output branch to the base branch after the update (requires `gh` and `--push`).                                                                                                                       |
 | `--output-branch`  | Name of the output branch. Default: `kubebuilder-update-from-<from-version>-to-<to-version>`.                                                                                                                                           |
 | `--push`           | Push the output branch to the `origin` remote after the update completes.                                                                                                                                                               |
 | `--restore-path`   | Repeatable. Paths to preserve from the base branch when squashing (e.g., `.github/workflows`). **Not supported** with `--show-commits`.                                                                                                 |
 | `--show-commits`   | Keep full history (do not squash). **Not compatible** with `--restore-path`.                                                                                                                                                            |
 | `--to-version`     | Kubebuilder release to update **to** (e.g., `v4.7.0`). If unset, defaults to the latest available release.                                                                                                                              |
-| `--use-gh-models`  | Post an AI overview as an issue comment using `gh models`. Requires `gh` + `gh-models` extension. Effective only when `--open-gh-issue` is also set.                                                                                    |
+| `--use-gh-models`  | Generate one AI overview of scaffold changes and conflicts using `gh models`; it is used for the **PR description** (when creating a PR) and as an **Issue comment** (when creating an Issue). Requires `--open-gh-issue` or `--open-gh-pr`, and `gh` + `gh-models` extension. |
 | `-h, --help`       | Show help for this command.                                                                                                                                                                                                             |
 
 ## Demonstration

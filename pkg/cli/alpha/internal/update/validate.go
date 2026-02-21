@@ -50,10 +50,10 @@ func (opts *Update) Validate() error {
 		return fmt.Errorf("unable to find release %s: %w", opts.ToVersion, err)
 	}
 
-	if opts.OpenGhIssue {
+	if opts.OpenGhIssue || opts.OpenGhPr {
 		if err := exec.Command("gh", "--version").Run(); err != nil {
 			return fmt.Errorf("`gh` CLI not found or not authenticated. "+
-				"You must have gh instaled to use the --open-gh-issue option: %s", err)
+				"You must have gh installed to use --open-gh-issue or --open-gh-pr: %s", err)
 		}
 	}
 

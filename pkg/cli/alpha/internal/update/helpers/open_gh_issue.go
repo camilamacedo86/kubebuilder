@@ -36,71 +36,28 @@ const (
 // IssueTitleTmpl is the title template for the GitHub issue.
 const IssueTitleTmpl = "[Action Required] Upgrade the Scaffold: %[2]s -> %[1]s"
 
-// IssueBodyTmpl is used when no conflicts are detected during the merge.
+// PRTitleTmpl is the title template for the GitHub Pull Request created by --open-gh-pr.
+const PRTitleTmpl = "chore(kubebuilder): update scaffold %[1]s → %[2]s"
+
+// PRBodyTmpl is the default body template for the GitHub Pull Request when not using --use-gh-models.
+// Format args: fromVersion, toVersion.
+const PRBodyTmpl = `Kubebuilder scaffold update from %[1]s to %[2]s.
+
+Review the changes and run tests before merging.
+
+:book: **More info:** https://kubebuilder.io/reference/commands/alpha_update`
+
+// IssueBodyNotifyOnlyTmpl is used when only notifying that a new release is available,
+// without creating a branch or PR. It recommends running the update command locally.
 //
 //nolint:lll
-const IssueBodyTmpl = `## Description
+const IssueBodyNotifyOnlyTmpl = `A new Kubebuilder release [%[1]s](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/%[1]s) is available.
 
-Upgrade your project to use the latest scaffold changes introduced in Kubebuilder [%[1]s](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/%[1]s).  
+We recommend running the following command locally to upgrade your project scaffold:
 
-See the release notes from [%[3]s](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/%[3]s) to [%[1]s](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/%[1]s) for details about the changes included in this upgrade.
-
-## What to do
-
-A scheduled workflow already attempted this upgrade and created the branch %[4]s to help you in this process.
-
-Create a Pull Request using the URL below to review the changes:
-%[2]s  
-
-## Next steps
-
-**Verify the changes**
-- Build the project  
-- Run tests  
-- Confirm everything still works
-
-:book: **More info:** https://kubebuilder.io/reference/commands/alpha_update
-`
-
-// IssueBodyTmplWithConflicts is used when conflicts are detected during the merge.
-//
-//nolint:lll
-const IssueBodyTmplWithConflicts = `## Description
-
-Upgrade your project to use the latest scaffold changes introduced in Kubebuilder [%[1]s](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/%[1]s).  
-
-See the release notes from [%[3]s](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/%[3]s) to [%[1]s](https://github.com/kubernetes-sigs/kubebuilder/releases/tag/%[1]s) for details about the changes included in this upgrade.
-
-## What to do
-
-A scheduled workflow already attempted this upgrade and created the branch (%[4]s) to help you in this process.
-
-:warning: **Conflicts were detected during the merge.**
-
-Create a Pull Request using the URL below to review the changes and resolve conflicts manually:
-%[2]s  
-
-## Next steps
-
-### 1. Resolve conflicts
-After fixing conflicts, run:
 ~~~bash
-make manifests generate fmt vet lint-fix
+kubebuilder alpha update
 ~~~
-
-### 2. Optional: work on a new branch
-To apply the update in a clean branch, run:
-~~~bash
-kubebuilder alpha update --output-branch my-fix-branch
-~~~
-
-This will create a new branch (my-fix-branch) with the update applied.  
-Resolve conflicts there, complete the merge locally, and push the branch.
-
-### 3. Verify the changes
-- Build the project  
-- Run tests  
-- Confirm everything still works
 
 :book: **More info:** https://kubebuilder.io/reference/commands/alpha_update
 `
@@ -230,9 +187,9 @@ func listChangedFiles(base, head string) (src []string, gen []string) {
 	return src, gen
 }
 
-// BuildFullPrompet builds the AI context and writes it to a temp file.
+// BuildFullPrompt builds the AI context and writes it to a temp file.
 // It returns the absolute filepath to pass via --input-file/--file.
-func BuildFullPrompet(
+func BuildFullPrompt(
 	fromVersion, toVersion, baseBranch, outBranch, compareURL, releaseURL string,
 ) string {
 	changedSrc, changedGen := listChangedFiles(baseBranch, outBranch)

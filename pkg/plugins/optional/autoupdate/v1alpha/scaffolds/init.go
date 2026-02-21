@@ -36,12 +36,15 @@ type initScaffolder struct {
 
 	// useGHModels determines if GitHub Models AI summary should be enabled
 	useGHModels bool
+	// notifyOnly when true scaffolds a notify-only workflow (open Issue only, no PR or branch push)
+	notifyOnly bool
 }
 
 // NewInitScaffolder returns a new Scaffolder for project initialization operations
-func NewInitScaffolder(useGHModels bool) plugins.Scaffolder {
+func NewInitScaffolder(useGHModels, notifyOnly bool) plugins.Scaffolder {
 	return &initScaffolder{
 		useGHModels: useGHModels,
+		notifyOnly:  notifyOnly,
 	}
 }
 
@@ -59,7 +62,7 @@ func (s *initScaffolder) Scaffold() error {
 	)
 
 	err := scaffold.Execute(
-		&github.AutoUpdate{UseGHModels: s.useGHModels},
+		&github.AutoUpdate{UseGHModels: s.useGHModels, NotifyOnly: s.notifyOnly},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to execute init scaffold: %w", err)

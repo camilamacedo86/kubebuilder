@@ -39,6 +39,27 @@ var _ = Describe("NewUpdateCommand", func() {
 			Expect(flags.Lookup("restore-path")).NotTo(BeNil())
 			Expect(flags.Lookup("output-branch")).NotTo(BeNil())
 			Expect(flags.Lookup("push")).NotTo(BeNil())
+			Expect(flags.Lookup("open-gh-issue")).NotTo(BeNil())
+			Expect(flags.Lookup("open-gh-pr")).NotTo(BeNil())
+			Expect(flags.Lookup("use-gh-models")).NotTo(BeNil())
+		})
+
+		It("fails when --use-gh-models is set without --open-gh-issue or --open-gh-pr", func() {
+			cmd := NewUpdateCommand()
+			cmd.SetArgs([]string{"--use-gh-models"})
+			err := cmd.Execute()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("--use-gh-models"))
+			Expect(err.Error()).To(ContainSubstring("--open-gh-issue or --open-gh-pr"))
+		})
+
+		It("fails when --open-gh-pr is set without --push", func() {
+			cmd := NewUpdateCommand()
+			cmd.SetArgs([]string{"--open-gh-pr"})
+			err := cmd.Execute()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("--open-gh-pr"))
+			Expect(err.Error()).To(ContainSubstring("--push"))
 		})
 	})
 })

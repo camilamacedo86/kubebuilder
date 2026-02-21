@@ -89,6 +89,9 @@ Defaults:
     --merge-message "chore: upgrade kubebuilder scaffold" \
     --conflict-message "chore: upgrade with conflicts - manual review needed"
 
+  # Create a PR (default for the AutoUpdate workflow)
+  kubebuilder alpha update --push --open-gh-pr
+
   # Create an issue and add an AI overview comment
   kubebuilder alpha update --open-gh-issue --use-gh-models
 
@@ -102,8 +105,12 @@ Defaults:
 				return fmt.Errorf("the --restore-path flag is not supported with --show-commits")
 			}
 
-			if opts.UseGhModels && !opts.OpenGhIssue {
-				return fmt.Errorf("the --use-gh-models requires --open-gh-issue to be set")
+			if opts.UseGhModels && !opts.OpenGhIssue && !opts.OpenGhPr {
+				return fmt.Errorf("the --use-gh-models flag requires --open-gh-issue or --open-gh-pr to be set")
+			}
+
+			if opts.OpenGhPr && !opts.Push {
+				return fmt.Errorf("the --open-gh-pr flag requires --push to be set")
 			}
 
 			// Defaults always on unless "disable" is present anywhere
@@ -170,13 +177,17 @@ Defaults:
 		"Custom commit message for merges with conflicts. "+
 			"Defaults to 'chore(kubebuilder): (:warning: manual conflict resolution required) update scaffold <from> -> <to>'.")
 	updateCmd.Flags().BoolVar(&opts.OpenGhIssue, "open-gh-issue", false,
-		"Create a GitHub issue with a pre-filled checklist and compare link after the update completes (requires `gh`).")
+		"Create a GitHub issue notifying that a new release is available and "+
+			"recommending to run the update locally (requires `gh`).")
+	updateCmd.Flags().BoolVar(&opts.OpenGhPr, "open-gh-pr", false,
+		"Create a GitHub Pull Request from the output branch to the base branch after the update (requires `gh` and --push).")
 	updateCmd.Flags().BoolVar(
 		&opts.UseGhModels,
 		"use-gh-models",
 		false,
-		"Generate and post an AI summary comment to the GitHub Issue using `gh models run`. "+
-			"Requires --open-gh-issue and GitHub CLI (`gh`) with the `gh-models` extension.")
+		"Generate an AI summary of scaffold changes and conflicts using `gh models run`. "+
+			"With --open-gh-pr the summary is used as the PR description; with --open-gh-issue as an issue comment. "+
+			"Requires --open-gh-issue or --open-gh-pr, and GitHub CLI (`gh`) with the `gh-models` extension.")
 	updateCmd.Flags().StringArrayVar(
 		&gitCfg,
 		"git-config",

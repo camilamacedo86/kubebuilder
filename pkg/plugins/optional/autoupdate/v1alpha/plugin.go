@@ -28,27 +28,28 @@ import (
 )
 
 //nolint:lll
-const metaDataDescription = `This plugin scaffolds a GitHub Action that helps you keep your project aligned with the latest Kubebuilder improvements. With a tiny amount of setup, you'll receive **automatic issue notifications** whenever a new Kubebuilder release is available. Each issue includes a **compare link** so you can open a Pull Request with one click and review the changes safely.
+const metaDataDescription = `This plugin scaffolds a GitHub Action that keeps your project aligned with the latest Kubebuilder improvements. By default, the workflow creates an update branch and opens a **Pull Request** when a new release is available.
 
-Under the hood, the workflow runs 'kubebuilder alpha update' using a **3-way merge strategy** to refresh your scaffold while preserving your code. It creates and pushes an update branch, then opens a GitHub **Issue** containing the PR URL you can use to review and merge.
+By default the workflow runs **--open-gh-pr** and **--open-gh-issue** (creates both a Pull Request and an Issue). With **--use-gh-models**, the same AI summary is used for the PR description and as an Issue comment. Use **--notify-only** to scaffold a reduced-permission workflow that only opens an Issue.
 
 ### How to set it up
 
 1) **Add the plugin**: Use the Kubebuilder CLI to scaffold the automation into your repo.
 2) **Review the workflow**: The file '.github/workflows/auto_update.yml' runs on a schedule to check for updates.
-3) **Permissions required** (via the built-in 'GITHUB_TOKEN'):
-   - **contents: write** — needed to create and push the update branch.
-   - **issues: write** — needed to create the tracking Issue with the PR link.
-   - **models: read** (optional) — only required if using --use-gh-models flag for AI-generated summaries.
-4) **Protect your branches**: Enable **branch protection rules** so automated changes **cannot** be pushed directly. All updates must go through a Pull Request for review.
+3) **Default permissions** (via the built-in 'GITHUB_TOKEN'):
+   - **contents: write** — create and push the update branch.
+   - **pull-requests: write** — create the Pull Request.
+   - **issues: write** — create the Issue (default: both PR and Issue are opened).
+   - **models: read** (optional) — only if using --use-gh-models for AI-generated summaries.
+4) **Protect your branches**: Enable **branch protection rules** so automated changes cannot be merged without review.
 
 ### Optional: GitHub Models AI Summary
 
-By default, the workflow does NOT use GitHub Models. To enable AI-generated summaries in GitHub issues:
+By default, the workflow does NOT use GitHub Models. To enable AI-generated summaries:
   - Ensure your repository/organization has permissions to use GitHub Models.
   - Re-run: kubebuilder edit --plugins="autoupdate/v1-alpha" --use-gh-models
 
-Without this flag, the workflow will still work but won't include AI summaries (avoiding 403 Forbidden errors).`
+Without this flag, the workflow still works but won't include AI summaries (avoiding 403 Forbidden errors).`
 
 const pluginName = "autoupdate." + plugins.DefaultNameQualifier
 
@@ -68,6 +69,7 @@ var _ plugin.Init = Plugin{}
 // PluginConfig defines the structure that will be used to track the data
 type PluginConfig struct {
 	UseGHModels bool `json:"useGHModels,omitempty"`
+	NotifyOnly  bool `json:"notifyOnly,omitempty"`
 }
 
 // Name returns the name of the plugin

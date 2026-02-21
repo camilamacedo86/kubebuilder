@@ -31,6 +31,8 @@ type AutoUpdate struct {
 
 	// UseGHModels indicates whether to enable GitHub Models AI summary
 	UseGHModels bool
+	// NotifyOnly when true scaffolds a notify-only workflow (open Issue only, no PR or branch push)
+	NotifyOnly bool
 }
 
 // SetTemplateDefaults implements machinery.Template
@@ -47,15 +49,23 @@ func (f *AutoUpdate) SetTemplateDefaults() error {
 
 const autoUpdateTemplate = `name: Auto Update
 
+# {{ if .NotifyOnly }}Notify-only mode: workflow runs the update in CI and opens an Issue (no branch push or PR).
+# Only issues: write{{ if .UseGHModels }} and models: read{{ end }} are required.{{ else }}
 # The 'kubebuilder alpha update' command requires write access to the repository to create a branch
 # with the update files and allow you to open a pull request using the link provided in the issue.
-# The branch created will be named in the format kubebuilder-update-from-<from-version>-to-<to-version> by default.
-# To protect your codebase, please ensure that you have branch protection rules configured for your 
-# main branches. This will guarantee that no one can bypass a review and push directly to a branch like 'main'.
+# The branch is named
+# kubebuilder-update-from-<from-version>-to-<to-version> by default. To protect your codebase, ensure branch
+# protection rules are configured for your main branches so updates cannot be merged without review.{{ end }}
 permissions:
-  contents: write  # Create and push the update branch
-  issues: write    # Create GitHub Issue with PR link{{ if .UseGHModels }}
-  models: read     # Use GitHub Models for AI summaries{{ end }}
+{{ if .NotifyOnly }}
+  issues: write{{ if .UseGHModels }}
+  models: read{{ end }}
+{{ else }}
+  contents: write       # Create and push the update branch
+  pull-requests: write  # Create the Pull Request
+  issues: write        # Create the Issue (default: open both PR and Issue){{ if .UseGHModels }}
+  models: read         # AI summary for PR description and Issue comment{{ end }}
+{{ end }}
 
 on:
   workflow_dispatch:
@@ -105,23 +115,38 @@ jobs:
     # Run the Kubebuilder alpha update command.
     # More info: https://kubebuilder.io/reference/commands/alpha_update
     - name: Run kubebuilder alpha update
+{{ if .NotifyOnly }}
+      # Notify-only: no --push, no --open-gh-pr. Opens an Issue recommending to run the update locally.
+      # --force: Completes the merge even if conflicts occur (run happens in CI; branch is not pushed).
+      # --restore-path: Preserves specified paths when squashing.
+      # --open-gh-issue: Creates an Issue notifying that a new release is available.{{ if .UseGHModels }}
+      # --use-gh-models: Adds an AI-generated comment to the Issue with change overview and conflict guidance.{{ end }}
+      run: |
+        kubebuilder alpha update \
+          --force \
+          --restore-path .github/workflows \
+          --open-gh-issue{{ if .UseGHModels }} \
+          --use-gh-models{{ end }}
+{{ else }}
       # Executes the update command with specified flags.
       # --force: Completes the merge even if conflicts occur, leaving conflict markers.
       # --push: Automatically pushes the resulting output branch to the 'origin' remote.
       # --restore-path: Preserves specified paths (e.g., CI workflow files) when squashing.
       # --open-gh-issue: Creates a GitHub Issue with a link for opening a PR for review.{{ if .UseGHModels }}
-      # --use-gh-models: Adds an AI-generated comment to the created Issue with
-      #   a short overview of the scaffold changes and conflict-resolution guidance (if any).{{ else }}
+      # --use-gh-models: AI summary is used for the PR description and as an Issue comment.{{ else }}
       #
-      # WARNING: This workflow does not use GitHub Models AI summary by default.
-      # To enable AI-generated summaries in GitHub issues, you need permissions to use GitHub Models.
+      # WARNING: This workflow does not use GitHub Models AI by default.
+      # To enable AI usage, you need permissions to use GitHub Models.
       # If you have the required permissions, re-run:
-      #   kubebuilder edit --plugins="autoupdate/v1-alpha" --use-gh-models{{ end }}
+      #   kubebuilder edit --plugins="autoupdate/v1-alpha" --use-gh-models
+{{ end }}
       run: |
         kubebuilder alpha update \
           --force \
           --push \
           --restore-path .github/workflows \
+          --open-gh-pr \
           --open-gh-issue{{ if .UseGHModels }} \
           --use-gh-models{{ end }}
+{{ end }}
 `

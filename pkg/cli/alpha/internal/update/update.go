@@ -86,11 +86,15 @@ type Update struct {
 	// update scaffold <from> -> <to>".
 	CommitMessageConflict string
 
-	// OpenGhIssue, when true, automatically creates a GitHub issue after the update
-	// completes. The issue includes a pre-filled checklist and a compare link from
-	// the base branch (--from-branch) to the output branch. This requires the GitHub
-	// CLI (`gh`) to be installed and authenticated in the local environment.
+	// OpenGhIssue, when true, creates a GitHub issue that notifies that a new release
+	// is available and recommends running the update locally. Requires the GitHub CLI
+	// (`gh`) to be installed and authenticated.
 	OpenGhIssue bool
+
+	// OpenGhPr, when true, creates a Pull Request from the output branch to the base branch
+	// after the update (requires --push). The workflow uses this by default to create PRs
+	// automatically. Requires the GitHub CLI (`gh`) and permissions to create PRs.
+	OpenGhPr bool
 
 	UseGhModels bool
 
@@ -128,6 +132,13 @@ type Update struct {
 // Update a project using a default three-way Git merge.
 // This helps apply new scaffolding changes while preserving custom code.
 func (opts *Update) Update() error {
+	// Only open-gh-issue without AI and without push: skip the merge and just create the issue.
+	// OpenGhIssue + Push (or OpenGhPr, which requires Push) or UseGhModels: run full update like master.
+	if opts.OpenGhIssue && !opts.UseGhModels && !opts.Push {
+		log.Info("Skipping merge; creating GitHub Issue only (use --use-gh-models to run the update and add an AI summary)")
+		return opts.openGitHubIssue(false, "")
+	}
+
 	// Inform users about GitHub Models if they're opening an issue but not using AI summary
 	if opts.OpenGhIssue && !opts.UseGhModels {
 		log.Info("Consider enabling GitHub Models to get an AI summary to help with the update")
@@ -218,8 +229,33 @@ func (opts *Update) Update() error {
 	opts.cleanupTempBranches()
 	log.Info("Update completed successfully")
 
+	// Generate AI summary once when needed for both PR description and Issue comment
+	var aiSummary string
+	if opts.UseGhModels && (opts.OpenGhPr && opts.Push || opts.OpenGhIssue) {
+		repoBytes, err := exec.Command("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner").Output()
+		if err != nil {
+			return fmt.Errorf("failed to detect GitHub repository for AI summary: %w", err)
+		}
+		repo := strings.TrimSpace(string(repoBytes))
+		out := opts.getOutputBranchName()
+		createPRURL := ""
+		if opts.Push {
+			createPRURL = fmt.Sprintf("https://github.com/%s/compare/%s...%s?expand=1", repo, opts.FromBranch, out)
+		}
+		aiSummary, err = opts.generateAISummary(createPRURL)
+		if err != nil {
+			return fmt.Errorf("failed to generate AI summary: %w", err)
+		}
+	}
+
+	if opts.OpenGhPr && opts.Push {
+		if err := opts.openGitHubPR(aiSummary); err != nil {
+			return fmt.Errorf("failed to open GitHub PR: %w", err)
+		}
+	}
+
 	if opts.OpenGhIssue {
-		if err := opts.openGitHubIssue(hasConflicts); err != nil {
+		if err := opts.openGitHubIssue(hasConflicts, aiSummary); err != nil {
 			return fmt.Errorf("failed to open GitHub issue: %w", err)
 		}
 	}
@@ -227,9 +263,34 @@ func (opts *Update) Update() error {
 	return nil
 }
 
-func (opts *Update) openGitHubIssue(hasConflicts bool) error {
-	log.Info("Creating GitHub Issue to track the need to update the project")
+func (opts *Update) openGitHubPR(aiSummary string) error {
 	out := opts.getOutputBranchName()
+	log.Info("Creating GitHub Pull Request", "branch", out)
+
+	title := fmt.Sprintf(helpers.PRTitleTmpl, opts.FromVersion, opts.ToVersion)
+	body := fmt.Sprintf(helpers.PRBodyTmpl, opts.FromVersion, opts.ToVersion)
+	if aiSummary != "" {
+		body = aiSummary
+		log.Info("Using AI-generated summary for PR description")
+	}
+
+	createCmd := exec.Command("gh", "pr", "create",
+		"--base", opts.FromBranch,
+		"--head", out,
+		"--title", title,
+		"--body", body,
+	)
+	createOut, createErr := createCmd.CombinedOutput()
+	if createErr != nil {
+		return fmt.Errorf("failed to create GitHub PR: %v\n%s", createErr, string(createOut))
+	}
+	log.Info("GitHub Pull Request created", "output", string(createOut))
+	return nil
+}
+
+func (opts *Update) openGitHubIssue(hasConflicts bool, aiSummary string) error {
+	log.Info("Creating GitHub Issue to notify that a new release is available")
+	_ = hasConflicts // only relevant when building AI context
 
 	// Detect repo "owner/name"
 	repoCmd := exec.Command("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner")
@@ -239,7 +300,6 @@ func (opts *Update) openGitHubIssue(hasConflicts bool) error {
 	}
 	repo := strings.TrimSpace(string(repoBytes))
 
-	createPRURL := fmt.Sprintf("https://github.com/%s/compare/%s...%s?expand=1", repo, opts.FromBranch, out)
 	title := fmt.Sprintf(helpers.IssueTitleTmpl, opts.ToVersion, opts.FromVersion)
 
 	// Skip if an open issue with same title already exists
@@ -253,13 +313,8 @@ func (opts *Update) openGitHubIssue(hasConflicts bool) error {
 		return nil
 	}
 
-	// Base issue body
-	var body string
-	if hasConflicts {
-		body = fmt.Sprintf(helpers.IssueBodyTmplWithConflicts, opts.ToVersion, createPRURL, opts.FromVersion, out)
-	} else {
-		body = fmt.Sprintf(helpers.IssueBodyTmpl, opts.ToVersion, createPRURL, opts.FromVersion, out)
-	}
+	// Issue body: notify that latest release is available and recommend running the command locally
+	body := fmt.Sprintf(helpers.IssueBodyNotifyOnlyTmpl, opts.ToVersion)
 
 	log.Info("Creating GitHub Issue")
 	createCmd := exec.Command("gh", "issue", "create",
@@ -291,59 +346,52 @@ func (opts *Update) openGitHubIssue(hasConflicts bool) error {
 		}
 		issueURL = strings.TrimSpace(string(urlBytes))
 	}
-	log.Info("GitHub Issue created to track the update", "url", issueURL, "compare", createPRURL)
+	log.Info("GitHub Issue created to track the update", "url", issueURL)
 
-	if opts.UseGhModels {
-		log.Info("Generating AI summary with gh models")
-
-		if issueURL == "" {
-			return fmt.Errorf("issue created but URL could not be determined")
+	if aiSummary != "" && issueURL != "" {
+		num := helpers.IssueNumberFromURL(issueURL)
+		target := issueURL
+		args := make([]string, 4, 7)
+		args[0] = "issue"
+		args[1] = "comment"
+		args[2] = "--repo"
+		args[3] = repo
+		if num != "" {
+			target = num
 		}
-
-		releaseURL := fmt.Sprintf("https://github.com/kubernetes-sigs/kubebuilder/releases/tag/%s",
-			opts.ToVersion)
-
-		ctx := helpers.BuildFullPrompet(
-			opts.FromVersion, opts.ToVersion, opts.FromBranch, out,
-			createPRURL, releaseURL)
-
-		var outBuf, errBuf bytes.Buffer
-		cmd := exec.Command(
-			"gh", "models", "run", "openai/gpt-5",
-			"--system-prompt", helpers.AiPRPrompt,
-		)
-		cmd.Stdin = strings.NewReader(ctx)
-		cmd.Stdout = &outBuf
-		cmd.Stderr = &errBuf
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("gh models run failed: %w\nstderr:\n%s", err, errBuf.String())
+		args = append(args, target, "--body", aiSummary)
+		commentCmd := exec.Command("gh", args...)
+		commentCmd.Stdout = os.Stdout
+		commentCmd.Stderr = os.Stderr
+		if err := commentCmd.Run(); err != nil {
+			return fmt.Errorf("failed to add AI summary comment to issue: %w", err)
 		}
-
-		summary := strings.TrimSpace(outBuf.String())
-		if summary != "" {
-			num := helpers.IssueNumberFromURL(issueURL)
-			target := issueURL
-			args := make([]string, 4, 7)
-			args[0] = "issue"
-			args[1] = "comment"
-			args[2] = "--repo"
-			args[3] = repo
-			if num != "" {
-				target = num
-			}
-			args = append(args, target, "--body", summary)
-			commentCmd := exec.Command("gh", args...)
-			commentCmd.Stdout = os.Stdout
-			commentCmd.Stderr = os.Stderr
-			if err := commentCmd.Run(); err != nil {
-				return fmt.Errorf("failed to add AI summary comment: %s", err)
-			}
-			log.Info("AI summary comment added to the issue")
-		} else {
-			log.Warn("AI summary was empty, no comment added")
-		}
+		log.Info("AI summary comment added to the issue")
 	}
 	return nil
+}
+
+// generateAISummary runs gh models to produce an overview of scaffold changes and conflict guidance.
+// createPRURL is the compare URL (can be empty if the branch was not pushed).
+func (opts *Update) generateAISummary(createPRURL string) (string, error) {
+	out := opts.getOutputBranchName()
+	releaseURL := fmt.Sprintf("https://github.com/kubernetes-sigs/kubebuilder/releases/tag/%s", opts.ToVersion)
+	ctx := helpers.BuildFullPrompt(
+		opts.FromVersion, opts.ToVersion, opts.FromBranch, out,
+		createPRURL, releaseURL)
+
+	var outBuf, errBuf bytes.Buffer
+	cmd := exec.Command(
+		"gh", "models", "run", "openai/gpt-5",
+		"--system-prompt", helpers.AiPRPrompt,
+	)
+	cmd.Stdin = strings.NewReader(ctx)
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("gh models run failed: %w\nstderr:\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(outBuf.String()), nil
 }
 
 func (opts *Update) cleanupTempBranches() {

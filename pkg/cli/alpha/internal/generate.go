@@ -319,6 +319,9 @@ func migrateAutoUpdatePlugin(s store.Store) error {
 	if autoUpdatePlugin.UseGHModels {
 		args = append(args, "--use-gh-models")
 	}
+	if autoUpdatePlugin.NotifyOnly {
+		args = append(args, "--notify-only")
+	}
 	if err = util.RunCmd("kubebuilder edit", "kubebuilder", args...); err != nil {
 		return fmt.Errorf("failed to run edit subcommand for Auto plugin: %w", err)
 	}

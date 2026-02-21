@@ -17,6 +17,8 @@ limitations under the License.
 package helpers
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -111,6 +113,28 @@ var _ = Describe("Open GitHub Issue Helpers", func() {
 		It("should skip uninteresting lines", func() {
 			Expect(interestingLine("main.go", "+x := 1")).To(BeFalse())
 			Expect(interestingLine("config.yaml", "+# comment")).To(BeFalse())
+		})
+	})
+
+	Describe("IssueBodyNotifyOnlyTmpl", func() {
+		It("should format notify-only issue body with version and recommend running update locally", func() {
+			formatted := fmt.Sprintf(IssueBodyNotifyOnlyTmpl, "v4.6.0")
+			Expect(formatted).To(ContainSubstring("v4.6.0"))
+			Expect(formatted).To(ContainSubstring("https://github.com/kubernetes-sigs/kubebuilder/releases/tag/v4.6.0"))
+			Expect(formatted).To(ContainSubstring("kubebuilder alpha update"))
+			Expect(formatted).To(ContainSubstring("kubebuilder.io/reference/commands/alpha_update"))
+		})
+	})
+
+	Describe("PRTitleTmpl and PRBodyTmpl", func() {
+		It("should format PR title and body with from and to versions", func() {
+			title := fmt.Sprintf(PRTitleTmpl, "v4.5.0", "v4.6.0")
+			Expect(title).To(Equal("chore(kubebuilder): update scaffold v4.5.0 → v4.6.0"))
+
+			body := fmt.Sprintf(PRBodyTmpl, "v4.5.0", "v4.6.0")
+			Expect(body).To(ContainSubstring("v4.5.0"))
+			Expect(body).To(ContainSubstring("v4.6.0"))
+			Expect(body).To(ContainSubstring("kubebuilder.io/reference/commands/alpha_update"))
 		})
 	})
 })
