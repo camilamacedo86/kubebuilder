@@ -206,14 +206,22 @@ func kubebuilderCreate(s store.Store) error {
 		return fmt.Errorf("failed to get resources: %w", err)
 	}
 
-	// First, scaffold all APIs
+	// First, scaffold all APIs (without controllers)
 	for _, r := range resources {
 		if err = createAPI(r); err != nil {
 			return fmt.Errorf("failed to create API for %s/%s/%s: %w", r.Group, r.Version, r.Kind, err)
 		}
 	}
 
-	// Then, scaffold all webhooks
+	// Then, scaffold all controllers
+	// We need to create controllers separately to support multiple controllers per API
+	for _, r := range resources {
+		if err = createControllers(r); err != nil {
+			return fmt.Errorf("failed to create controllers for %s/%s/%s: %w", r.Group, r.Version, r.Kind, err)
+		}
+	}
+
+	// Finally, scaffold all webhooks
 	// We cannot create a webhook for an API that does not exist
 	for _, r := range resources {
 		if err = createWebhook(r); err != nil {
@@ -484,10 +492,61 @@ func getDeployImageOptions(resourceData deployimagev1alpha1.ResourceData) []stri
 	return args
 }
 
-// Creates an API resource.
+// Creates an API resource (without controllers).
 func createAPI(res resource.Resource) error {
 	args := append([]string{"create", "api"}, getGVKFlags(res)...)
 	args = append(args, getAPIResourceFlags(res)...)
+
+	// Add the external API flags if the resource is external
+	if res.IsExternal() {
+		args = append(args, "--external-api-path", res.Path)
+		args = append(args, "--external-api-domain", res.Domain)
+		// Add module if specified
+		if res.Module != "" {
+			args = append(args, "--external-api-module", res.Module)
+		}
+	}
+
+	if err := util.RunCmd("kubebuilder create api", "kubebuilder", args...); err != nil {
+		return fmt.Errorf("failed to run kubebuilder create api command: %w", err)
+	}
+
+	return nil
+}
+
+// Creates controllers for a resource.
+// This function supports multiple controllers per resource (GVK).
+func createControllers(res resource.Resource) error {
+	// Check if the resource has the new Controllers field
+	if res.Controllers != nil && !res.Controllers.IsEmpty() {
+		// Create each controller with its specific name
+		for _, controller := range *res.Controllers {
+			if err := createControllerWithName(res, controller.Name); err != nil {
+				return fmt.Errorf("failed to create controller %q: %w", controller.Name, err)
+			}
+		}
+	} else if res.Controller {
+		// Legacy: create a controller without a specific name
+		if err := createControllerWithName(res, ""); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Creates a single controller for a resource with a specific name.
+func createControllerWithName(res resource.Resource, controllerName string) error {
+	args := append([]string{"create", "api"}, getGVKFlags(res)...)
+
+	// Always set --resource=false since we're only creating the controller
+	args = append(args, "--resource=false")
+	args = append(args, "--controller=true")
+
+	// Add controller name if specified
+	if controllerName != "" {
+		args = append(args, "--controller-name", controllerName)
+	}
 
 	// Add the external API flags if the resource is external
 	if res.IsExternal() {
@@ -520,11 +579,11 @@ func getAPIResourceFlags(res resource.Resource) []string {
 			args = append(args, "--namespaced=false")
 		}
 	}
-	if res.Controller {
-		args = append(args, "--controller")
-	} else {
-		args = append(args, "--controller=false")
-	}
+
+	// Always disable controller creation in the API scaffolding step
+	// Controllers will be created separately in createControllers()
+	args = append(args, "--controller=false")
+
 	return args
 }
 

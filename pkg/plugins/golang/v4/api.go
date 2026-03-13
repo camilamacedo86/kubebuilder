@@ -22,6 +22,7 @@ import (
 	"fmt"
 	log "log/slog"
 	"os"
+	"strings"
 
 	"github.com/spf13/pflag"
 
@@ -109,6 +110,9 @@ func (p *createAPISubcommand) BindFlags(fs *pflag.FlagSet) {
 		"if set, generate the controller without prompting the user")
 	p.controllerFlag = fs.Lookup("controller")
 
+	fs.StringVar(&p.options.ControllerName, "controller-name", "",
+		"name of the controller to scaffold (allows multiple controllers per resource)")
+
 	fs.StringVar(&p.options.ExternalAPIPath, "external-api-path", "",
 		"Specify the Go package import path for the external API. This is used to scaffold controllers for resources "+
 			"defined outside this project (e.g., github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1).")
@@ -137,6 +141,20 @@ func (p *createAPISubcommand) InjectResource(res *resource.Resource) error {
 	if !p.controllerFlag.Changed {
 		log.Info("Create Controller [y/n]")
 		p.options.DoController = util.YesNo(reader)
+	}
+
+	// If the resource already exists in the PROJECT file and we're NOT creating an API,
+	// copy essential fields from the existing resource (like Path) needed for controller scaffolding.
+	// Don't copy API, Controllers, or Webhooks - those will be managed by UpdateResource.
+	if !p.options.DoAPI {
+		if existingRes, err := p.config.GetResource(res.GVK); err == nil {
+			// Copy fields needed for controller generation
+			p.resource.Path = existingRes.Path
+			p.resource.Plural = existingRes.Plural
+			p.resource.External = existingRes.External
+			p.resource.Core = existingRes.Core
+			p.resource.Module = existingRes.Module
+		}
 	}
 
 	// Ensure that external API options cannot be used when creating an API in the project.
@@ -174,7 +192,52 @@ func (p *createAPISubcommand) InjectResource(res *resource.Resource) error {
 		}
 	}
 
+	// In case we want to scaffold a controller, validate the controller name doesn't already exist
+	if p.options.DoController && p.options.ControllerName != "" {
+		// Check if this resource already exists in the config
+		if existingRes, err := p.config.GetResource(p.resource.GVK); err == nil {
+			// Resource exists, check if a controller with this name already exists
+			if existingRes.Controllers != nil && existingRes.Controllers.HasController(p.options.ControllerName) {
+				return fmt.Errorf("controller with name %q already exists for resource %s/%s/%s",
+					p.options.ControllerName, p.resource.Group, p.resource.Version, p.resource.Kind)
+			}
+
+			// Check for normalization collisions
+			// If the new controller name would normalize to the same value as an existing controller,
+			// it would generate conflicting reconciler struct names
+			if existingRes.Controllers != nil {
+				newNormalized := normalizeForCollisionCheck(p.options.ControllerName)
+				for _, existing := range *existingRes.Controllers {
+					existingNormalized := normalizeForCollisionCheck(existing.Name)
+					if newNormalized == existingNormalized {
+						return fmt.Errorf("controller name %q conflicts with existing controller %q: "+
+							"both would generate the same reconciler struct name",
+							p.options.ControllerName, existing.Name)
+					}
+				}
+			}
+
+			// Also check legacy controller: true case
+			if existingRes.Controller && p.options.ControllerName == strings.ToLower(p.resource.Kind) {
+				return fmt.Errorf("controller with name %q conflicts with the existing legacy controller",
+					p.options.ControllerName)
+			}
+		}
+	}
+
 	return nil
+}
+
+// normalizeForCollisionCheck normalizes a controller name to detect potential collisions.
+// Different names that normalize to the same value would generate conflicting code.
+func normalizeForCollisionCheck(name string) string {
+	var result strings.Builder
+	for _, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			result.WriteRune(r)
+		}
+	}
+	return strings.ToLower(result.String())
 }
 
 func (p *createAPISubcommand) PreScaffold(machinery.Filesystem) error {

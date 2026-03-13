@@ -18,6 +18,7 @@ package golang
 
 import (
 	"path"
+	"strings"
 
 	"sigs.k8s.io/kubebuilder/v4/pkg/config"
 	"sigs.k8s.io/kubebuilder/v4/pkg/model/resource"
@@ -75,6 +76,11 @@ type Options struct {
 	DoValidation bool
 	DoConversion bool
 
+	// ControllerName is the name of the controller to scaffold.
+	// This is used when creating multiple controllers for the same resource (GVK).
+	// If not provided, a default name based on the resource kind will be used.
+	ControllerName string
+
 	// Spoke versions for conversion webhook
 	Spoke []string
 
@@ -101,7 +107,35 @@ func (opts Options) UpdateResource(res *resource.Resource, c config.Config) {
 	}
 
 	if opts.DoController {
-		res.Controller = true
+		// Use the new Controllers field if a controller name is specified
+		if opts.ControllerName != "" {
+			// Migrate controller: true to controllers array if needed
+			if res.Controller {
+				// Initialize controllers array
+				if res.Controllers == nil {
+					res.Controllers = &resource.Controllers{}
+				}
+				// Add default controller (Kind-based name) from controller: true
+				defaultName := strings.ToLower(res.Kind)
+				_ = res.Controllers.AddController(defaultName)
+				// Clear legacy flag
+				res.Controller = false
+			}
+
+			// Initialize controllers array if not yet created
+			if res.Controllers == nil {
+				res.Controllers = &resource.Controllers{}
+			}
+
+			// Add the new named controller
+			// Note: AddController handles validation and duplicate checking
+			_ = res.Controllers.AddController(opts.ControllerName)
+		} else {
+			// No name specified: use legacy Controller field only if no controllers exist
+			if res.Controllers == nil || res.Controllers.IsEmpty() {
+				res.Controller = true
+			}
+		}
 	}
 
 	if opts.DoDefaulting || opts.DoValidation || opts.DoConversion {
