@@ -184,7 +184,7 @@ var _ = Describe("Chart Generation Integration Tests", func() {
 			valuesContent, err := afero.ReadFile(afero.NewOsFs(), valuesPath)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(valuesContent)).To(ContainSubstring("certManager:"))
-			Expect(string(valuesContent)).To(ContainSubstring("enable: true"))
+			Expect(string(valuesContent)).To(ContainSubstring("enabled: true"))
 		})
 	})
 
