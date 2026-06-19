@@ -22,20 +22,20 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"sigs.k8s.io/kubebuilder/v4/pkg/plugins/optional/helm/v2alpha/internal/common"
 )
 
 // GetDefaultContainerName extracts the container name from kubectl.kubernetes.io/default-container annotation.
 // This allows the Helm plugin to work with any container name, not just "manager".
 // If the annotation is not found, it falls back to "manager" for backward compatibility.
 func GetDefaultContainerName(yamlContent string) string {
-	// Look for kubectl.kubernetes.io/default-container annotation
-	pattern := regexp.MustCompile(`(?m)^\s*kubectl\.kubernetes\.io/default-container:\s+(\S+)`)
+	pattern := regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(common.DefaultContainerAnnotation) + `:\s+(\S+)`)
 	matches := pattern.FindStringSubmatch(yamlContent)
 	if len(matches) > 1 {
 		return matches[1]
 	}
-	// Fallback to "manager" for backward compatibility with older scaffolds
-	return "manager"
+	return common.DefaultManagerContainerName
 }
 
 // LeadingWhitespace extracts the leading whitespace from a line.
@@ -44,6 +44,68 @@ func LeadingWhitespace(line string) (string, int) {
 	trimmed := strings.TrimLeft(line, " \t")
 	indentLen := len(line) - len(trimmed)
 	return line[:indentLen], indentLen
+}
+
+// FindManagerContainerRange returns the [start, end) line indices of the named container's
+// block within lines. start is the index of the "- " list item marker; end is the first
+// line outside the block. Returns -1, -1 when the container cannot be located.
+//
+// Handles both inline form ("- name: manager") and block form where "name:" is on its own
+// line below the "- " marker (e.g. the command field comes first in the list item).
+func FindManagerContainerRange(lines []string, containerName string) (start, end int) {
+	nameLine := -1
+	for i, line := range lines {
+		t := strings.TrimSpace(line)
+		if t == "name: "+containerName || t == "- name: "+containerName {
+			nameLine = i
+			break
+		}
+	}
+	if nameLine == -1 {
+		return -1, -1
+	}
+
+	if strings.HasPrefix(strings.TrimSpace(lines[nameLine]), "- ") {
+		// Inline: "- name: manager" — the list item starts on this line.
+		start = nameLine
+	} else {
+		// "name:" is on its own line; scan backwards for the "- " marker at a
+		// strictly lower indent. Stop on any non-list line at lower indent.
+		_, nameIndent := LeadingWhitespace(lines[nameLine])
+		start = -1
+		for i := nameLine - 1; i >= 0; i-- {
+			t := strings.TrimSpace(lines[i])
+			_, ind := LeadingWhitespace(lines[i])
+			if ind < nameIndent && strings.HasPrefix(t, "- ") {
+				start = i
+				break
+			}
+			if ind < nameIndent {
+				break
+			}
+		}
+		if start == -1 {
+			return -1, -1
+		}
+	}
+
+	// End is the first non-empty, non-Helm-directive line with indent <= the item's indent.
+	// Helm template directives ({{- ...) may have zero indentation even inside a container
+	// block (e.g. the env overrides conditional), so they must not terminate the range.
+	_, itemIndent := LeadingWhitespace(lines[start])
+	end = len(lines)
+	for i := start + 1; i < len(lines); i++ {
+		t := strings.TrimSpace(lines[i])
+		if t == "" || strings.HasPrefix(t, "{{") {
+			continue
+		}
+		_, ind := LeadingWhitespace(lines[i])
+		if ind <= itemIndent {
+			end = i
+			break
+		}
+	}
+	return start, end
 }
 
 // IsManagerDeployment checks if a Deployment is the controller manager.

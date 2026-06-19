@@ -2796,6 +2796,87 @@ spec:
 			Expect(result).To(ContainSubstring("name: controller-test"))
 		})
 
+		It("should template manager container fields and not sidecar fields when sidecar appears first", func() {
+			deployment := &unstructured.Unstructured{}
+			deployment.SetAPIVersion("apps/v1")
+			deployment.SetKind("Deployment")
+			deployment.SetName("test-project-controller-manager")
+
+			// Sidecar listed before the manager — the annotation identifies the manager.
+			// Before this fix, templateImageReference matched sidecar:v1 first instead of
+			// controller:latest, and templateResources/args/securityContext did the same.
+			content := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-project-controller-manager
+  namespace: test-project-system
+spec:
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+    spec:
+      containers:
+      - name: sidecar
+        image: sidecar:v1
+        resources:
+          limits:
+            cpu: 100m
+            memory: 64Mi
+          requests:
+            cpu: 10m
+            memory: 32Mi
+      - name: manager
+        image: controller:latest
+        args:
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts: []
+      serviceAccountName: test-project-controller-manager
+      volumes: []`
+
+			result := templater.ApplyHelmSubstitutions(content, deployment)
+
+			By("verifying manager image is templated, not sidecar image")
+			Expect(result).To(ContainSubstring(".Values.manager.image.repository"))
+			Expect(result).To(ContainSubstring("image: sidecar:v1"),
+				"sidecar image must remain as literal value, not be replaced by Helm template")
+			Expect(result).NotTo(ContainSubstring("image: controller:latest"),
+				"manager image must be replaced by Helm template")
+
+			By("verifying manager resources are templated")
+			Expect(result).To(ContainSubstring("{{- if .Values.manager.resources }}"),
+				"manager resources must be templated")
+
+			By("verifying manager args are templated")
+			Expect(result).To(ContainSubstring("{{- range .Values.manager.args }}"),
+				"manager args must be templated")
+
+			By("verifying manager securityContext is templated")
+			Expect(result).To(ContainSubstring(".Values.manager.securityContext"),
+				"manager securityContext must be templated")
+
+			By("verifying sidecar container fields remain as literals")
+			Expect(result).To(ContainSubstring("name: sidecar"),
+				"sidecar container must remain in output")
+			Expect(result).To(ContainSubstring("cpu: 100m"),
+				"sidecar resources must remain as literal values")
+			Expect(strings.Count(result, "{{- if .Values.manager.resources }}")).To(Equal(1),
+				"only manager resources must be templated, not sidecar resources")
+		})
+
 		It("should append extraVolumes and extraVolumeMounts when lists are present", func() {
 			deployment := &unstructured.Unstructured{}
 			deployment.SetAPIVersion("apps/v1")
@@ -2855,10 +2936,39 @@ spec:
 		})
 
 		It("should append only extraVolumes from values and keep webhook/metrics conditional", func() {
-			deployment := &unstructured.Unstructured{}
-			deployment.SetAPIVersion("apps/v1")
-			deployment.SetKind("Deployment")
-			deployment.SetName("test-project-controller-manager")
+			deployment := &unstructured.Unstructured{
+				Object: map[string]any{
+					"apiVersion": "apps/v1",
+					"kind":       "Deployment",
+					"metadata": map[string]any{
+						"name": "test-project-controller-manager", //nolint:goconst
+					},
+					"spec": map[string]any{
+						"template": map[string]any{
+							"spec": map[string]any{
+								"volumes": []any{
+									map[string]any{"name": "webhook-certs", "secret": map[string]any{"secretName": "webhook-server-cert"}},
+									map[string]any{"name": "metrics-certs", "secret": map[string]any{"secretName": "metrics-server-cert"}},
+								},
+								"containers": []any{
+									map[string]any{
+										"name":  "manager",
+										"image": "controller:latest",
+										"volumeMounts": []any{
+											map[string]any{
+												"name": "webhook-certs", "mountPath": "/tmp/k8s-webhook-server/serving-certs", "readOnly": true,
+											},
+											map[string]any{
+												"name": "metrics-certs", "mountPath": "/tmp/k8s-metrics-server/metrics-certs", "readOnly": true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
 			content := `apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -2873,27 +2983,22 @@ spec:
       - name: metrics-certs
         secret:
           secretName: metrics-server-cert
-      - name: app-secret-1
-        secret:
-          secretName: app-secret-1
       containers:
       - name: manager
         image: controller:latest
         volumeMounts:
-        - name: webhook-certs
-          mountPath: /tmp/k8s-webhook-server/serving-certs
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: webhook-certs
           readOnly: true
-        - name: metrics-certs
-          mountPath: /tmp/k8s-metrics-server/metrics-certs
-          readOnly: true
-        - name: app-secret-1
-          mountPath: /etc/secrets
+        - mountPath: /tmp/k8s-metrics-server/metrics-certs
+          name: metrics-certs
           readOnly: true
 `
 			result := templater.ApplyHelmSubstitutions(content, deployment)
 			Expect(result).To(ContainSubstring(".Values.certManager.enabled"))
 			Expect(result).To(ContainSubstring(".Values.manager.extraVolumes"))
-			Expect(result).To(ContainSubstring("app-secret-1"))
+			Expect(result).To(ContainSubstring("webhook-certs"))
+			Expect(result).To(ContainSubstring("metrics-certs"))
 		})
 
 		It("should fall back to 'manager' when default-container annotation is missing", func() {

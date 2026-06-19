@@ -192,7 +192,11 @@ func templateEnvironmentVariables(yamlContent string) string {
 	}
 
 	lines := strings.Split(yamlContent, "\n")
-	for i := range lines {
+	cStart, cEnd := FindManagerContainerRange(lines, containerName)
+	if cStart == -1 {
+		cStart, cEnd = 0, len(lines)
+	}
+	for i := cStart; i < cEnd; i++ {
 		if strings.TrimSpace(lines[i]) != "env:" {
 			continue
 		}
@@ -264,7 +268,11 @@ func templateResources(yamlContent string) string {
 	}
 
 	lines := strings.Split(yamlContent, "\n")
-	for i := range lines {
+	cStart, cEnd := FindManagerContainerRange(lines, containerName)
+	if cStart == -1 {
+		cStart, cEnd = 0, len(lines)
+	}
+	for i := cStart; i < cEnd; i++ {
 		if strings.TrimSpace(lines[i]) != "resources:" {
 			continue
 		}
@@ -551,7 +559,11 @@ func templateContainerSecurityContext(yamlContent string) string {
 	}
 
 	lines := strings.Split(yamlContent, "\n")
-	for i := range lines {
+	cStart, cEnd := FindManagerContainerRange(lines, containerName)
+	if cStart == -1 {
+		cStart, cEnd = 0, len(lines)
+	}
+	for i := cStart; i < cEnd; i++ {
 		if strings.TrimSpace(lines[i]) != "securityContext:" {
 			continue
 		}
@@ -618,22 +630,31 @@ func templateControllerManagerArgs(yamlContent string) string {
 		return yamlContent
 	}
 
+	// Scope the regex to the manager container's block so that a sidecar's args are
+	// not modified when the sidecar appears before the manager in the containers list.
+	allLines := strings.Split(yamlContent, "\n")
+	cStart, cEnd := FindManagerContainerRange(allLines, containerName)
+	if cStart == -1 {
+		cStart, cEnd = 0, len(allLines)
+	}
+	containerBlock := strings.Join(allLines[cStart:cEnd], "\n") + "\n"
+
 	argsPattern := regexp.MustCompile(`(?m)([ \t]+)args:\n((?:[ \t]+-.*\n)+)`)
-	loc := argsPattern.FindStringSubmatchIndex(yamlContent)
+	loc := argsPattern.FindStringSubmatchIndex(containerBlock)
 	if loc == nil {
 		return yamlContent
 	}
 
-	match := yamlContent[loc[0]:loc[1]]
+	match := containerBlock[loc[0]:loc[1]]
 	if strings.Contains(match, ".Values.manager.args") {
 		return yamlContent
 	}
 
-	indent := yamlContent[loc[2]:loc[3]]
-	itemsBlock := yamlContent[loc[4]:loc[5]]
+	indent := containerBlock[loc[2]:loc[3]]
+	itemsBlock := containerBlock[loc[4]:loc[5]]
 
 	itemIndent := indent + "  "
-	lines := strings.Split(itemsBlock, "\n")
+	itemLines := strings.Split(itemsBlock, "\n")
 	var (
 		metricsLine    string
 		metricsIndent  string
@@ -641,7 +662,7 @@ func templateControllerManagerArgs(yamlContent string) string {
 		preservedLines []string
 	)
 
-	for _, rawLine := range lines {
+	for _, rawLine := range itemLines {
 		line := strings.TrimRight(rawLine, "\r")
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" {
@@ -716,7 +737,13 @@ func templateControllerManagerArgs(yamlContent string) string {
 
 	newBlock := strings.TrimRight(builder.String(), "\n") + "\n"
 
-	return yamlContent[:loc[0]] + newBlock + yamlContent[loc[1]:]
+	newContainerBlock := containerBlock[:loc[0]] + newBlock + containerBlock[loc[1]:]
+	newContainerLines := strings.Split(strings.TrimSuffix(newContainerBlock, "\n"), "\n")
+	result := make([]string, 0, len(allLines))
+	result = append(result, allLines[:cStart]...)
+	result = append(result, newContainerLines...)
+	result = append(result, allLines[cEnd:]...)
+	return strings.Join(result, "\n")
 }
 
 // templateImageReference converts hardcoded image references to Helm templates
@@ -731,7 +758,11 @@ func templateImageReference(yamlContent string) string {
 	}
 
 	lines := strings.Split(yamlContent, "\n")
-	for i := 0; i < len(lines); i++ {
+	cStart, cEnd := FindManagerContainerRange(lines, containerName)
+	if cStart == -1 {
+		cStart, cEnd = 0, len(lines)
+	}
+	for i := cStart; i < cEnd; i++ {
 		trimmed := strings.TrimSpace(lines[i])
 		if !strings.HasPrefix(trimmed, "image:") {
 			continue

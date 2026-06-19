@@ -146,23 +146,17 @@ func extractDeployManagerVersion(deployment *unstructured.Unstructured) string {
 		return ""
 	}
 
-	// Extract containers using NestedFieldNoCopy to avoid deep copy issues with integer fields
-	containers, found, err := unstructured.NestedFieldNoCopy(deployment.Object, "spec", "template", "spec", "containers")
-	if !found || err != nil {
+	specMap := extractDeploymentSpec(deployment)
+	if specMap == nil {
 		return ""
 	}
 
-	containersList, ok := containers.([]any)
-	if !ok || len(containersList) == 0 {
+	container := findManagerContainer(specMap, managerContainerName(deployment))
+	if container == nil {
 		return ""
 	}
 
-	firstContainer, ok := containersList[0].(map[string]any)
-	if !ok {
-		return ""
-	}
-
-	image, found, err := unstructured.NestedString(firstContainer, "image")
+	image, found, err := unstructured.NestedString(container, "image")
 	if !found || err != nil || image == "" {
 		return ""
 	}

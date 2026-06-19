@@ -174,22 +174,17 @@ func extractPortFromService(svc *unstructured.Unstructured) int {
 
 // extractWebhookPortFromDeployment extracts the webhook port from deployment container ports.
 func extractWebhookPortFromDeployment(deployment *unstructured.Unstructured) int {
-	containers, found, err := unstructured.NestedFieldNoCopy(deployment.Object, "spec", "template", "spec", "containers")
-	if !found || err != nil {
+	specMap := extractDeploymentSpec(deployment)
+	if specMap == nil {
 		return 0
 	}
 
-	containersList, ok := containers.([]any)
-	if !ok || len(containersList) == 0 {
+	container := findManagerContainer(specMap, managerContainerName(deployment))
+	if container == nil {
 		return 0
 	}
 
-	firstContainer, ok := containersList[0].(map[string]any)
-	if !ok {
-		return 0
-	}
-
-	portsField, found, err := unstructured.NestedFieldNoCopy(firstContainer, "ports")
+	portsField, found, err := unstructured.NestedFieldNoCopy(container, "ports")
 	if !found || err != nil {
 		return 0
 	}
