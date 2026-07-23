@@ -283,6 +283,18 @@ Set `networkPolicy.enabled: true` to install NetworkPolicy resources for the man
 
 When the kustomize output includes `NetworkPolicy` resources, the plugin converts them into chart templates and sets `networkPolicy.enabled: true`. When no `NetworkPolicy` resources are present in the kustomize output, the plugin generates default templates for metrics traffic, and also for webhook traffic when webhooks are detected in the provided kustomize input files.
 
+Like the Prometheus `ServiceMonitor`, the NetworkPolicy templates are user-owned: once scaffolded, `kubebuilder edit --plugins helm/v2-alpha` preserves your local edits on regeneration and only overwrites them when you pass `--force`.
+
+The metrics policy is gated on both `networkPolicy.enabled` and `metrics.enabled`; the webhook policy is gated on both `networkPolicy.enabled` and `webhook.enabled`. The policies only allow traffic from namespaces carrying the expected label, so consumers must label the namespaces that need access:
+
+```sh
+# Allow scraping the metrics endpoint from this namespace
+kubectl label namespace <namespace> metrics=enabled
+
+# Allow the webhook server to receive requests from this namespace
+kubectl label namespace <namespace> webhook=enabled
+```
+
 ### Custom labels and annotations
 
 Add custom labels and annotations using `manager.labels`, `manager.annotations`, `manager.pod.labels`, and `manager.pod.annotations`. Duplicate keys from kustomize are filtered automatically.

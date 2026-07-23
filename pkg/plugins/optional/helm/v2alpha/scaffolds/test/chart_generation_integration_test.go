@@ -585,6 +585,101 @@ var _ = Describe("Chart Generation Integration Tests", func() {
 		})
 	})
 
+	Context("NetworkPolicy (rendered)", func() {
+		// networkPolicyDoc returns the NetworkPolicy document whose name ends with the given
+		// suffix from a multi-document render, or "" when it was not rendered.
+		networkPolicyDoc := func(rendered, suffix string) string {
+			for _, doc := range strings.Split(rendered, "\n---") {
+				if strings.Contains(doc, "\nkind: NetworkPolicy\n") && strings.Contains(doc, suffix) {
+					return doc
+				}
+			}
+			return ""
+		}
+
+		renderWithNetworkPolicies := func(setArgs ...string) string {
+			out, err := helmTemplate(createKustomizeWithWebhooks("test-project"), setArgs...)
+			Expect(err).NotTo(HaveOccurred(), "helm template failed: %s", out)
+			return out
+		}
+
+		It("renders both policies with the metrics and webhook ports when enabled", func() {
+			rendered := renderWithNetworkPolicies(
+				"--set", "networkPolicy.enabled=true",
+				"--set", "metrics.enabled=true",
+				"--set", "webhook.enabled=true",
+			)
+
+			metricsPolicy := networkPolicyDoc(rendered, "allow-metrics-traffic")
+			Expect(metricsPolicy).NotTo(BeEmpty(), "metrics NetworkPolicy should be rendered")
+			Expect(metricsPolicy).To(ContainSubstring("metrics: enabled"))
+			Expect(metricsPolicy).To(ContainSubstring("port: 8443"))
+
+			webhookPolicy := networkPolicyDoc(rendered, "allow-webhook-traffic")
+			Expect(webhookPolicy).NotTo(BeEmpty(), "webhook NetworkPolicy should be rendered")
+			Expect(webhookPolicy).To(ContainSubstring("webhook: enabled"))
+			Expect(webhookPolicy).To(ContainSubstring("port: 9443"))
+		})
+
+		It("renders no NetworkPolicy when networkPolicy.enabled is false", func() {
+			rendered := renderWithNetworkPolicies(
+				"--set", "networkPolicy.enabled=false",
+				"--set", "metrics.enabled=true",
+				"--set", "webhook.enabled=true",
+			)
+
+			Expect(rendered).NotTo(ContainSubstring("kind: NetworkPolicy"))
+		})
+
+		It("suppresses the metrics policy when metrics are disabled but keeps the webhook policy", func() {
+			rendered := renderWithNetworkPolicies(
+				"--set", "networkPolicy.enabled=true",
+				"--set", "metrics.enabled=false",
+				"--set", "webhook.enabled=true",
+			)
+
+			Expect(networkPolicyDoc(rendered, "allow-metrics-traffic")).To(BeEmpty(),
+				"metrics NetworkPolicy must be gated by metrics.enabled")
+			Expect(networkPolicyDoc(rendered, "allow-webhook-traffic")).NotTo(BeEmpty(),
+				"webhook NetworkPolicy should still render")
+		})
+
+		It("suppresses the webhook policy when webhooks are disabled but keeps the metrics policy", func() {
+			rendered := renderWithNetworkPolicies(
+				"--set", "networkPolicy.enabled=true",
+				"--set", "metrics.enabled=true",
+				"--set", "webhook.enabled=false",
+			)
+
+			Expect(networkPolicyDoc(rendered, "allow-webhook-traffic")).To(BeEmpty(),
+				"webhook NetworkPolicy must be gated by webhook.enabled")
+			Expect(networkPolicyDoc(rendered, "allow-metrics-traffic")).NotTo(BeEmpty(),
+				"metrics NetworkPolicy should still render")
+		})
+
+		It("renders no NetworkPolicy when networkPolicy is enabled but metrics and webhooks are disabled", func() {
+			rendered := renderWithNetworkPolicies(
+				"--set", "networkPolicy.enabled=true",
+				"--set", "metrics.enabled=false",
+				"--set", "webhook.enabled=false",
+			)
+
+			Expect(rendered).NotTo(ContainSubstring("kind: NetworkPolicy"),
+				"both policies must be gated off when their features are disabled")
+		})
+
+		It("tracks custom metrics and webhook ports in the rendered policies", func() {
+			rendered := renderWithNetworkPolicies(
+				"--set", "networkPolicy.enabled=true",
+				"--set", "metrics.enabled=true", "--set", "metrics.port=9000",
+				"--set", "webhook.enabled=true", "--set", "webhook.port=9001",
+			)
+
+			Expect(networkPolicyDoc(rendered, "allow-metrics-traffic")).To(ContainSubstring("port: 9000"))
+			Expect(networkPolicyDoc(rendered, "allow-webhook-traffic")).To(ContainSubstring("port: 9001"))
+		})
+	})
+
 	Context("Custom Output Directory", func() {
 		It("should support custom output directory via --output-dir flag", func() {
 			kustomizeYAML := createBasicKustomizeOutput("test-project")

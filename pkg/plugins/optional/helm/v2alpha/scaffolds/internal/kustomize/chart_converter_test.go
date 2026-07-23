@@ -18,6 +18,7 @@ package kustomize
 
 import (
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -87,7 +88,7 @@ var _ = Describe("ChartConverter", func() {
 
 		// Create converter
 		converter = NewChartConverter(
-			resources, testProjectName, testProjectName, testNamespaceTestSystem, "dist", make(map[string]string),
+			resources, testProjectName, testProjectName, testNamespaceTestSystem, "dist", make(map[string]string), false,
 		)
 	})
 
@@ -158,6 +159,60 @@ var _ = Describe("ChartConverter", func() {
 			files, err := afero.ReadDir(fs.FS, metricsDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(files).To(HaveLen(1), "expected only one metrics service file after deduplication")
+		})
+	})
+
+	Context("user-owned templates (force behavior)", func() {
+		builderFor := func(builders []machinery.Builder, dir string) *DynamicTemplate {
+			for _, b := range builders {
+				if dt, ok := b.(*DynamicTemplate); ok && strings.HasPrefix(dt.RelativePath, dir) {
+					return dt
+				}
+			}
+			return nil
+		}
+
+		addNetworkPolicyAndServiceMonitor := func() {
+			networkPolicy := &unstructured.Unstructured{}
+			networkPolicy.SetAPIVersion("networking.k8s.io/v1")
+			networkPolicy.SetKind("NetworkPolicy")
+			networkPolicy.SetName("test-project-allow-metrics-traffic")
+			resources.NetworkPolicies = []*unstructured.Unstructured{networkPolicy}
+
+			serviceMonitor := &unstructured.Unstructured{}
+			serviceMonitor.SetAPIVersion("monitoring.coreos.com/v1")
+			serviceMonitor.SetKind("ServiceMonitor")
+			serviceMonitor.SetName("test-project-controller-manager-metrics-monitor")
+			resources.ServiceMonitors = []*unstructured.Unstructured{serviceMonitor}
+		}
+
+		ifExistsAction := func(builder *DynamicTemplate) machinery.IfExistsAction {
+			Expect(builder).NotTo(BeNil())
+			Expect(builder.SetTemplateDefaults()).To(Succeed())
+			return builder.IfExistsAction
+		}
+
+		It("preserves NetworkPolicy and ServiceMonitor, and always regenerates the manager", func() {
+			addNetworkPolicyAndServiceMonitor()
+
+			builders := converter.GetChartBuilders()
+
+			Expect(ifExistsAction(builderFor(builders, "network-policy/"))).To(Equal(machinery.SkipFile))
+			Expect(ifExistsAction(builderFor(builders, "prometheus/"))).To(Equal(machinery.SkipFile))
+			Expect(ifExistsAction(builderFor(builders, "manager/"))).To(Equal(machinery.OverwriteFile))
+		})
+
+		It("overwrites the user-owned templates when force is set", func() {
+			addNetworkPolicyAndServiceMonitor()
+
+			forced := NewChartConverter(
+				resources, testProjectName, testProjectName, testNamespaceTestSystem, "dist",
+				make(map[string]string), true,
+			)
+			builders := forced.GetChartBuilders()
+
+			Expect(ifExistsAction(builderFor(builders, "network-policy/"))).To(Equal(machinery.OverwriteFile))
+			Expect(ifExistsAction(builderFor(builders, "prometheus/"))).To(Equal(machinery.OverwriteFile))
 		})
 	})
 

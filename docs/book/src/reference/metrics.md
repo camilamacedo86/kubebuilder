@@ -362,7 +362,7 @@ Uncomment the following line in the `config/default/kustomization.yaml`:
 ```yaml
 # [NETWORK POLICY] Protect the /metrics endpoint and Webhook Server with NetworkPolicy.
 # Only Pod(s) running a namespace labeled with 'metrics: enabled' are able to gather the metrics.
-# Only CR(s) which uses webhooks and applied on namespaces labeled 'webhooks: enabled' are able to work properly.
+# Only CR(s) which uses webhooks and applied on namespaces labeled 'webhook: enabled' are able to work properly.
 #- ../network-policy
 ```
 

@@ -142,7 +142,7 @@ data:
 			Expect(resources.Other).To(HaveLen(2))
 
 			By("converting to Helm chart")
-			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string))
+			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string), false)
 			builders := converter.GetChartBuilders()
 			scaffold := machinery.NewScaffold(fs)
 			err = scaffold.Execute(builders...)
@@ -261,7 +261,7 @@ spec:
 			resources, err := parser.Parse()
 			Expect(err).NotTo(HaveOccurred())
 
-			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string))
+			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string), false)
 			builders := converter.GetChartBuilders()
 			scaffold := machinery.NewScaffold(fs)
 			err = scaffold.Execute(builders...)
@@ -325,7 +325,7 @@ spec:
 			resources, err := parser.Parse()
 			Expect(err).NotTo(HaveOccurred())
 
-			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string))
+			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string), false)
 			builders := converter.GetChartBuilders()
 			scaffold := machinery.NewScaffold(fs)
 			err = scaffold.Execute(builders...)
@@ -456,7 +456,7 @@ spec:
 			Expect(resources.RoleBindings).To(HaveLen(1), "should have 1 RoleBinding")
 			Expect(resources.Other).To(HaveLen(1), "ConfigMap should be in Other")
 
-			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string))
+			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string), false)
 			builders := converter.GetChartBuilders()
 			scaffold := machinery.NewScaffold(fs)
 			err = scaffold.Execute(builders...)
@@ -682,7 +682,7 @@ spec:
 			Expect(resources.RoleBindings).To(HaveLen(3), "should have 3 RoleBindings")
 
 			By("converting to Helm chart")
-			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string))
+			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string), false)
 			builders := converter.GetChartBuilders()
 			scaffold := machinery.NewScaffold(fs)
 			err = scaffold.Execute(builders...)
@@ -931,7 +931,7 @@ spec:
 			resources, err := parser.Parse()
 			Expect(err).NotTo(HaveOccurred())
 
-			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string))
+			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string), false)
 			builders := converter.GetChartBuilders()
 			scaffold := machinery.NewScaffold(fs)
 			err = scaffold.Execute(builders...)
@@ -1087,7 +1087,7 @@ spec:
 			resources, err := parser.Parse()
 			Expect(err).NotTo(HaveOccurred())
 
-			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string))
+			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string), false)
 			builders := converter.GetChartBuilders()
 			scaffold := machinery.NewScaffold(fs)
 			err = scaffold.Execute(builders...)
@@ -1235,7 +1235,7 @@ spec:
 			Expect(cr.GetAPIVersion()).To(Equal("batch.tutorial.kubebuilder.io/v1"))
 			Expect(cr.GetName()).To(Equal("cronjob-sample"))
 
-			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string))
+			converter := kustomize.NewChartConverter(resources, "test-project", "test-project", "test-project-system", "dist", make(map[string]string), false)
 			builders := converter.GetChartBuilders()
 			scaffold := machinery.NewScaffold(fs)
 			err = scaffold.Execute(builders...)
@@ -1425,7 +1425,7 @@ spec:
 			Expect(roleNamespaces).To(HaveKey("manager-rolebinding-users"))
 
 			By("converting to Helm chart with role-namespace mappings")
-			chartConverter := kustomize.NewChartConverter(resources, namePrefix, "test-project", managerNamespace, "dist", roleNamespaces)
+			chartConverter := kustomize.NewChartConverter(resources, namePrefix, "test-project", managerNamespace, "dist", roleNamespaces, false)
 			builders := chartConverter.GetChartBuilders()
 			scaffold := machinery.NewScaffold(fs)
 			err = scaffold.Execute(builders...)

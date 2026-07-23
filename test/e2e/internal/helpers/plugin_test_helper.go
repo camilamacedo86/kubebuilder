@@ -63,6 +63,10 @@ type RunOptions struct {
 	HasMetrics bool
 	// HasNetworkPolicies indicates if network policies are enabled
 	HasNetworkPolicies bool
+	// MetricsPort is the expected metrics port the metrics NetworkPolicy must allow (defaults to 8443)
+	MetricsPort int
+	// WebhookPort is the expected webhook port the webhook NetworkPolicy must allow (defaults to 9443)
+	WebhookPort int
 	// IsNamespaced indicates if project is namespace-scoped
 	IsNamespaced bool
 	// InstallMethod specifies how to install the project
@@ -178,12 +182,21 @@ func Run(kbc *utils.TestContext, opts RunOptions) {
 	Expect(err).NotTo(HaveOccurred())
 
 	if opts.HasNetworkPolicies {
+		metricsPort := opts.MetricsPort
+		if metricsPort == 0 {
+			metricsPort = 8443
+		}
+		webhookPort := opts.WebhookPort
+		if webhookPort == 0 {
+			webhookPort = 9443
+		}
+
 		if opts.HasMetrics {
 			By("labeling the namespace to allow consume the metrics")
 			Expect(kbc.Kubectl.Command("label", "namespaces", kbc.Kubectl.Namespace,
 				"metrics=enabled")).Error().NotTo(HaveOccurred())
 
-			By("Ensuring the Allow Metrics Traffic NetworkPolicy exists", func() {
+			By("Ensuring the Allow Metrics Traffic NetworkPolicy exists and allows the metrics port", func() {
 				var output string
 				output, err = kbc.Kubectl.Get(
 					true,
@@ -192,6 +205,17 @@ func Run(kbc *utils.TestContext, opts RunOptions) {
 				Expect(err).NotTo(HaveOccurred(), "NetworkPolicy allow-metrics-traffic should exist in the namespace")
 				Expect(output).To(ContainSubstring("allow-metrics-traffic"), "NetworkPolicy allow-metrics-traffic "+
 					"should be present in the output")
+
+				// The NetworkPolicy must allow the pod's metrics port, otherwise it blocks scraping.
+				var port string
+				port, err = kbc.Kubectl.Get(
+					true,
+					"networkpolicy", fmt.Sprintf("e2e-%s-allow-metrics-traffic", kbc.TestSuffix),
+					"-o", "jsonpath={.spec.ingress[*].ports[*].port}",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(port).To(Equal(strconv.Itoa(metricsPort)),
+					"metrics NetworkPolicy must allow the metrics port")
 			})
 		}
 
@@ -201,7 +225,7 @@ func Run(kbc *utils.TestContext, opts RunOptions) {
 				"webhook=enabled")
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Ensuring the allow-webhook-traffic NetworkPolicy exists", func() {
+			By("Ensuring the allow-webhook-traffic NetworkPolicy exists and allows the webhook port", func() {
 				var output string
 				output, err = kbc.Kubectl.Get(
 					true,
@@ -210,6 +234,18 @@ func Run(kbc *utils.TestContext, opts RunOptions) {
 				Expect(err).NotTo(HaveOccurred(), "NetworkPolicy allow-webhook-traffic should exist in the namespace")
 				Expect(output).To(ContainSubstring("allow-webhook-traffic"), "NetworkPolicy allow-webhook-traffic "+
 					"should be present in the output")
+
+				// The webhook NetworkPolicy must allow the pod's webhook container port (9443),
+				// not the webhook Service port (443); the wrong port blocks admission traffic.
+				var port string
+				port, err = kbc.Kubectl.Get(
+					true,
+					"networkpolicy", fmt.Sprintf("e2e-%s-allow-webhook-traffic", kbc.TestSuffix),
+					"-o", "jsonpath={.spec.ingress[*].ports[*].port}",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(port).To(Equal(strconv.Itoa(webhookPort)),
+					"webhook NetworkPolicy must allow the webhook container port")
 			})
 		}
 	}

@@ -50,9 +50,7 @@ func TemplatePorts(yamlContent string, resource *unstructured.Unstructured) stri
 	// Template webhook ports
 	if isWebhook {
 		if resourceKind == common.KindNetworkPolicy {
-			yamlContent = regexp.MustCompile(`(\s*)port:\s*\d+`).
-				ReplaceAllString(yamlContent, "${1}port: {{ .Values.webhook.port }}")
-			return yamlContent
+			return templateNetworkPolicyIngressPort(yamlContent, "{{ .Values.webhook.port }}")
 		}
 
 		// Replace containerPort for webhook-server with template (matches any numeric port)
@@ -68,13 +66,13 @@ func TemplatePorts(yamlContent string, resource *unstructured.Unstructured) stri
 
 	// Template metrics ports
 	if isMetrics {
+		if resourceKind == common.KindNetworkPolicy {
+			return templateNetworkPolicyIngressPort(yamlContent, "{{ .Values.metrics.port }}")
+		}
+
 		// Replace port with metrics.port template (matches any numeric port)
 		yamlContent = regexp.MustCompile(`(\s*)port:\s*\d+`).
 			ReplaceAllString(yamlContent, "${1}port: {{ .Values.metrics.port }}")
-
-		if resourceKind == common.KindNetworkPolicy {
-			return yamlContent
-		}
 
 		// Replace targetPort with metrics.port template (matches any numeric port)
 		yamlContent = regexp.MustCompile(`(\s*)targetPort:\s*\d+`).
@@ -103,6 +101,26 @@ func TemplatePorts(yamlContent string, resource *unstructured.Unstructured) stri
 	}
 
 	return yamlContent
+}
+
+// templateNetworkPolicyIngressPort rewrites the port only inside the NetworkPolicy's
+// ingress rule. Ports under an egress rule target other services and must be left as-is,
+// and scoping to ingress also avoids rewriting every port when a policy declares several.
+func templateNetworkPolicyIngressPort(yamlContent, portTemplate string) string {
+	portRe := regexp.MustCompile(`(\s*)port:\s*\d+`)
+	lines := strings.Split(yamlContent, "\n")
+	inIngress := false
+	for i, line := range lines {
+		switch trimmed := strings.TrimSpace(line); {
+		case strings.HasPrefix(trimmed, "ingress:"):
+			inIngress = true
+		case strings.HasPrefix(trimmed, "egress:"):
+			inIngress = false
+		case inIngress:
+			lines[i] = portRe.ReplaceAllString(line, "${1}port: "+portTemplate)
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // templateHealthProbePort templates the manager health probe port so it can be

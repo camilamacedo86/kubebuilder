@@ -69,7 +69,8 @@ func (f *NetworkPolicy) SetTemplateDefaults() error {
 	return nil
 }
 
-const networkPolicyTemplate = `{{` + "`" + `{{- if .Values.networkPolicy.enabled }}` + "`" + `}}
+const networkPolicyTemplate = `{{` + "`" +
+	`{{- if and .Values.networkPolicy.enabled .Values.metrics.enabled }}` + "`" + `}}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

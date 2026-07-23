@@ -143,4 +143,62 @@ var _ = Describe("FeaturesExtractor", func() {
 			Expect(features.HealthProbePort).To(Equal(9091))
 		})
 	})
+
+	Describe("DetectFeatures webhook port", func() {
+		It("uses the webhook Service targetPort, not the exposed port, when the deployment omits it", func() {
+			deployment := makeDeployment(deploymentOpts{
+				containers: []map[string]any{{keyName: valManager, keyImage: valControllerImage}},
+			})
+
+			features := featuresExtractor.DetectFeatures(&ResourceSet{
+				Deployment:            deployment,
+				Services:              []*unstructured.Unstructured{newWebhookService(443, 9443)},
+				WebhookConfigurations: []*unstructured.Unstructured{newValidatingWebhookConfig()},
+			}, "test-project", "test-system")
+
+			Expect(features.WebhookPort).To(Equal(9443))
+		})
+
+		It("prefers the webhook port declared on the manager container args", func() {
+			deployment := makeDeployment(deploymentOpts{
+				containers: []map[string]any{{
+					keyName:  valManager,
+					keyImage: valControllerImage,
+					keyArgs:  []any{"--webhook-port=9444"},
+				}},
+			})
+
+			features := featuresExtractor.DetectFeatures(&ResourceSet{
+				Deployment:            deployment,
+				Services:              []*unstructured.Unstructured{newWebhookService(443, 9443)},
+				WebhookConfigurations: []*unstructured.Unstructured{newValidatingWebhookConfig()},
+			}, "test-project", "test-system")
+
+			Expect(features.WebhookPort).To(Equal(9444))
+		})
+	})
 })
+
+// newValidatingWebhookConfig builds a minimal ValidatingWebhookConfiguration for feature detection.
+func newValidatingWebhookConfig() *unstructured.Unstructured {
+	return &unstructured.Unstructured{Object: map[string]any{
+		keyAPIVersion: "admissionregistration.k8s.io/v1",
+		keyKind:       "ValidatingWebhookConfiguration",
+		keyMetadata:   map[string]any{keyName: "test-project-validating-webhook-configuration"},
+	}}
+}
+
+// newWebhookService builds a webhook Service whose first port exposes port and forwards to targetPort.
+func newWebhookService(port, targetPort int64) *unstructured.Unstructured {
+	return &unstructured.Unstructured{Object: map[string]any{
+		keyAPIVersion: "v1",
+		keyKind:       "Service",
+		keyMetadata:   map[string]any{keyName: "test-project-webhook-service"},
+		keySpec: map[string]any{
+			"ports": []any{map[string]any{
+				"port":       port,
+				"targetPort": targetPort,
+			}},
+		},
+	}}
+}

@@ -205,6 +205,8 @@ var _ = Describe("kubebuilder", func() {
 				HasWebhook:          true,
 				HasMetrics:          true,
 				HasNetworkPolicies:  true,
+				MetricsPort:         customMetricsPort,
+				WebhookPort:         customWebhookPort,
 				InstallMethod:       helpers.InstallMethodHelm,
 				SkipChartGeneration: true, // Chart already generated and customized above
 			})

@@ -584,7 +584,8 @@ spec:
 
 			result := templater.ApplyHelmSubstitutions(content, networkPolicyResource)
 
-			Expect(result).To(ContainSubstring("{{- if .Values.networkPolicy.enabled }}"))
+			Expect(result).To(ContainSubstring(
+				"{{- if and .Values.networkPolicy.enabled .Values.metrics.enabled }}"))
 			Expect(result).To(ContainSubstring("{{- end }}"))
 		})
 
@@ -2704,13 +2705,13 @@ metadata:
 spec:
   ingress:
   - ports:
-    - port: 443
+    - port: 9443
       protocol: TCP`
 
 			result := templater.templatePorts(content, networkPolicy)
 
 			Expect(result).To(ContainSubstring("port: {{ .Values.webhook.port }}"))
-			Expect(result).NotTo(ContainSubstring("port: 443"))
+			Expect(result).NotTo(ContainSubstring("port: 9443"))
 		})
 
 		It("should not template custom NetworkPolicy ports", func() {

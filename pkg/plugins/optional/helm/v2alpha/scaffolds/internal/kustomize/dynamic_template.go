@@ -37,6 +37,8 @@ type DynamicTemplate struct {
 	Content string
 	// OutputDir is the base output directory (e.g., "dist")
 	OutputDir string
+	// Force allows overwriting user-owned files (e.g. NetworkPolicies) on regeneration.
+	Force bool
 }
 
 // SetTemplateDefaults implements machinery.Template
@@ -62,8 +64,14 @@ func (f *DynamicTemplate) SetTemplateDefaults() error {
 	// This prevents machinery from trying to execute Helm templates as Go templates
 	f.SetDelim("<%", "%>")
 
-	// Always overwrite - these are generated files that should match current kustomize output
-	f.IfExistsAction = machinery.OverwriteFile
+	// Most kustomize-derived files always regenerate to match current kustomize output.
+	// User-owned files (NetworkPolicies, the Prometheus ServiceMonitor) are preserved unless
+	// Force is set, so local edits survive a regeneration.
+	if isUserOwnedTemplate(f.RelativePath) && !f.Force {
+		f.IfExistsAction = machinery.SkipFile
+	} else {
+		f.IfExistsAction = machinery.OverwriteFile
+	}
 
 	return nil
 }

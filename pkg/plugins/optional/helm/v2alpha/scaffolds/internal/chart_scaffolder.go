@@ -116,6 +116,7 @@ func (s *ChartScaffolder) PrepareTemplates(_ machinery.Filesystem) ([]machinery.
 		extraction.Metadata.ManagerNamespace,
 		s.config.OutputDir,
 		extraction.Features.RoleNamespaces,
+		s.config.Force,
 	)
 
 	// Get builders for kustomize-derived chart templates

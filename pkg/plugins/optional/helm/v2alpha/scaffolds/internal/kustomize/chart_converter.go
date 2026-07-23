@@ -18,6 +18,7 @@ package kustomize
 
 import (
 	"slices"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -33,6 +34,7 @@ type ChartConverter struct {
 	detectedPrefix string
 	chartName      string
 	outputDir      string
+	force          bool
 
 	categorizer *ResourceCategorizer
 	templater   *templater.Templater
@@ -42,7 +44,7 @@ type ChartConverter struct {
 // NewChartConverter creates a new chart converter.
 func NewChartConverter(
 	resources *ParsedResources, detectedPrefix, chartName, managerNamespace, outputDir string,
-	roleNamespaces map[string]string,
+	roleNamespaces map[string]string, force bool,
 ) *ChartConverter {
 	categorizer := NewResourceCategorizer(resources)
 	t := templater.NewTemplater(detectedPrefix, chartName, managerNamespace, roleNamespaces)
@@ -53,6 +55,7 @@ func NewChartConverter(
 		detectedPrefix: detectedPrefix,
 		chartName:      chartName,
 		outputDir:      outputDir,
+		force:          force,
 		categorizer:    categorizer,
 		templater:      t,
 		generator:      chartGenerator,
@@ -82,10 +85,26 @@ func (c *ChartConverter) GetChartBuilders() []machinery.Builder {
 			RelativePath: filename,
 			Content:      chartFiles.TemplateFiles[filename],
 			OutputDir:    c.outputDir,
+			Force:        c.force,
 		})
 	}
 
 	return builders
+}
+
+// userOwnedTemplateDirs are chart template subdirectories the plugin scaffolds once and then
+// leaves to the user. Files under them (NetworkPolicies and the Prometheus ServiceMonitor) keep
+// local edits on regeneration unless --force is set, matching their fallback templates.
+var userOwnedTemplateDirs = []string{"network-policy/", "prometheus/"}
+
+// isUserOwnedTemplate reports whether a chart-relative template path is user-owned.
+func isUserOwnedTemplate(relativePath string) bool {
+	for _, dir := range userOwnedTemplateDirs {
+		if strings.HasPrefix(relativePath, dir) {
+			return true
+		}
+	}
+	return false
 }
 
 // dedupeResources removes duplicate resources to prevent rendering the same resource multiple times.
