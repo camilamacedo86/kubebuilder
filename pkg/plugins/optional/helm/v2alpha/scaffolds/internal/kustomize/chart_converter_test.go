@@ -88,7 +88,7 @@ var _ = Describe("ChartConverter", func() {
 
 		// Create converter
 		converter = NewChartConverter(
-			resources, testProjectName, testProjectName, testNamespaceTestSystem, "dist", make(map[string]string), false,
+			resources, testProjectName, testProjectName, testNamespaceTestSystem, "dist", make(map[string]string),
 		)
 	})
 
@@ -205,7 +205,7 @@ var _ = Describe("ChartConverter", func() {
 		It("overwrites the user-owned templates when force is set", func() {
 			addNetworkPolicyAndServiceMonitor()
 
-			forced := NewChartConverter(
+			forced := NewChartConverterWithForce(
 				resources, testProjectName, testProjectName, testNamespaceTestSystem, "dist",
 				make(map[string]string), true,
 			)
