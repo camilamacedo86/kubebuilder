@@ -44,6 +44,16 @@ type ChartConverter struct {
 // NewChartConverter creates a new chart converter.
 func NewChartConverter(
 	resources *ParsedResources, detectedPrefix, chartName, managerNamespace, outputDir string,
+	roleNamespaces map[string]string,
+) *ChartConverter {
+	return NewChartConverterWithForce(
+		resources, detectedPrefix, chartName, managerNamespace, outputDir, roleNamespaces, false,
+	)
+}
+
+// NewChartConverterWithForce creates a new chart converter with force overwrite behavior.
+func NewChartConverterWithForce(
+	resources *ParsedResources, detectedPrefix, chartName, managerNamespace, outputDir string,
 	roleNamespaces map[string]string, force bool,
 ) *ChartConverter {
 	categorizer := NewResourceCategorizer(resources)

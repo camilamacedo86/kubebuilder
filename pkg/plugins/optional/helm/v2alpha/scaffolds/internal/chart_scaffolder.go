@@ -109,7 +109,7 @@ func (s *ChartScaffolder) PrepareTemplates(_ machinery.Filesystem) ([]machinery.
 		return nil, fmt.Errorf("unable to generate the chart: %w", err)
 	}
 
-	chartConverter := kustomize.NewChartConverter(
+	chartConverter := kustomize.NewChartConverterWithForce(
 		resources,
 		extraction.Metadata.DetectedPrefix,
 		extraction.Metadata.ChartName,
