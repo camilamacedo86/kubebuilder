@@ -191,6 +191,17 @@ test-unit: ## Run the unit tests
 test-integration: install ## Run the integration tests (requires kubebuilder binary in PATH)
 	go test -race -tags=integration -timeout 30m $(TEST_PKGS)
 
+# Run every Ginkgo spec in random order, so a spec that needs another spec to
+# run first, or that leaves something changed, fails here. TEST_PKGS leaves out
+# the alpha update suite, which is heavy: it downloads old release binaries.
+# It installs Helm so the Helm plugin's `helm template` specs run, not skip.
+# Rerun a failure with GINKGO_RANDOM_FLAGS="-ginkgo.randomize-all -ginkgo.seed=<seed>".
+GINKGO_RANDOM_FLAGS ?= -ginkgo.randomize-all
+.PHONY: test-random
+test-random: install install-helm ## Run the unit and integration tests with every Ginkgo spec in random order
+	go test -race $(TEST_PKGS) $(GINKGO_RANDOM_FLAGS)
+	go test -race -tags=integration -timeout 30m $(TEST_PKGS) $(GINKGO_RANDOM_FLAGS)
+
 .PHONY: test-coverage
 test-coverage: ## Run unit and integration tests with coverage report
 	- rm -rf *.out  # Remove all coverage files if exists
