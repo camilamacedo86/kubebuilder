@@ -34,6 +34,7 @@ import (
 
 const (
 	certmanagerVersion = "v1.21.3"
+	helmVersion        = "v4.3.1"
 	certmanagerURLTmpl = "https://github.com/cert-manager/cert-manager/releases/download/%s/cert-manager.yaml"
 
 	defaultKindCluster = "kind"
@@ -392,8 +393,9 @@ func (t *TestContext) InstallHelm() error {
 	}
 
 	// Install Helm if not found
-	helmInstallScript := "https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4"
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("curl -fsSL %s | bash", helmInstallScript))
+	helmInstallScript := "https://raw.githubusercontent.com/helm/helm/" + helmVersion + "/scripts/get-helm-4"
+	install := fmt.Sprintf("curl -fsSL %s | bash -s -- --version %s", helmInstallScript, helmVersion)
+	cmd := exec.Command("bash", "-c", install)
 	_, err = t.Run(cmd)
 	if err != nil {
 		return err

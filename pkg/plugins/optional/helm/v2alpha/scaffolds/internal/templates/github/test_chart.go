@@ -24,6 +24,9 @@ import (
 
 var _ machinery.Template = &HelmChartCI{}
 
+// KindVersion is the kind version that the chart workflow installs
+const KindVersion = "v0.33.0"
+
 // HelmChartCI scaffolds the GitHub Action for testing Helm charts
 type HelmChartCI struct {
 	machinery.TemplateMixin
@@ -33,6 +36,8 @@ type HelmChartCI struct {
 	Force bool
 	// HasWebhooks enables cert-manager installation in the workflow
 	HasWebhooks bool
+	// KindVersion is the kind version to install
+	KindVersion string
 }
 
 // SetTemplateDefaults implements machinery.Template
@@ -42,6 +47,9 @@ func (f *HelmChartCI) SetTemplateDefaults() error {
 	}
 
 	f.TemplateBody = testChartTemplate
+	if f.KindVersion == "" {
+		f.KindVersion = KindVersion
+	}
 
 	if f.Force {
 		f.IfExistsAction = machinery.OverwriteFile
@@ -79,9 +87,9 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install the latest version of kind
+      - name: Install kind
         run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-$(go env GOARCH)
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/{{ .KindVersion }}/kind-linux-$(go env GOARCH)
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
 

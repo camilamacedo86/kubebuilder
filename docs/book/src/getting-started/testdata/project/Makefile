@@ -265,6 +265,8 @@ endef
 
 ## Helm binary to use for deploying the chart
 HELM ?= helm
+## Helm version that install-helm installs
+HELM_VERSION ?= v4.3.1
 ## Namespace to deploy the Helm release
 HELM_NAMESPACE ?= project-system
 ## Name of the Helm release
@@ -275,10 +277,11 @@ HELM_CHART_DIR ?= dist/chart
 HELM_EXTRA_ARGS ?=
 
 .PHONY: install-helm
-install-helm: ## Install the latest version of Helm.
+install-helm: ## Install Helm if it is not installed.
 	@command -v $(HELM) >/dev/null 2>&1 || { \
-		echo "Installing Helm..." && \
-		curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash; \
+		echo "Installing Helm $(HELM_VERSION)..." && \
+		curl -fsSL https://raw.githubusercontent.com/helm/helm/$(HELM_VERSION)/scripts/get-helm-4 | \
+			bash -s -- --version $(HELM_VERSION); \
 	}
 
 .PHONY: helm-deploy

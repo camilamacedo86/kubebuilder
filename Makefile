@@ -263,8 +263,9 @@ test-external-plugin: install  ## Run tests for external plugin
 	make -C docs/book/src/simple-external-plugin-tutorial/testdata/sampleexternalplugin/v1 test-plugin
 
 .PHONY: install-helm
-install-helm: ## Install the latest version of Helm locally
-	@command -v helm >/dev/null 2>&1 || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash
+install-helm: ## Install Helm locally if necessary
+	@command -v helm >/dev/null 2>&1 || curl -fsSL https://raw.githubusercontent.com/helm/helm/$(HELM_VERSION)/scripts/get-helm-4 | \
+		bash -s -- --version $(HELM_VERSION)
 
 .PHONY: install-kube-linter
 install-kube-linter: ## Install kube-linter locally if necessary
@@ -330,6 +331,7 @@ KUBE_LINTER ?= $(LOCALBIN)/kube-linter
 ## Tool Versions
 GO_APIDIFF_VERSION ?= v0.8.3
 GOLANGCI_LINT_VERSION ?= v2.13.1
+HELM_VERSION ?= v4.3.1
 KUBE_LINTER_VERSION ?= v0.8.3
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist

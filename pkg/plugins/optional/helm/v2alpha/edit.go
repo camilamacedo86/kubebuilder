@@ -215,7 +215,16 @@ func (p *editSubcommand) addHelmMakefileTargets(namespace string) error {
 	// Get the Helm Makefile targets
 	helmTargets := getHelmMakefileTargets(p.config.GetProjectName(), namespace, p.outputDir)
 
-	// Append the targets if they don't already exist
+	// Keep a Helm section that is already there, even one an older release wrote.
+	hasHelmSection, err := util.HasFileContentWith(makefilePath, helmMakefileSection)
+	if err != nil {
+		return fmt.Errorf("failed to read Makefile: %w", err)
+	}
+	if hasHelmSection {
+		slog.Info("Makefile already has the Helm deployment targets")
+		return nil
+	}
+
 	if err := util.AppendCodeIfNotExist(makefilePath, helmTargets); err != nil {
 		return fmt.Errorf("failed to append Helm targets to Makefile: %w", err)
 	}
@@ -287,13 +296,21 @@ func getHelmMakefileTargets(projectName, namespace, outputDir string) string {
 	return helmMakefileTemplate(namespace, release, outputDir)
 }
 
+// HelmVersion is the Helm version that the install-helm target installs
+const HelmVersion = "v4.3.1"
+
+// helmMakefileSection is the heading of the Helm targets in the Makefile
+const helmMakefileSection = "##@ Helm Deployment"
+
 // helmMakefileTemplate returns the Helm deployment section template
 // This follows the same pattern as the Kustomize deployment section in the Go plugin
 const helmMakefileTemplateFormat = `
-##@ Helm Deployment
+` + helmMakefileSection + `
 
 ## Helm binary to use for deploying the chart
 HELM ?= helm
+## Helm version that install-helm installs
+HELM_VERSION ?= ` + HelmVersion + `
 ## Namespace to deploy the Helm release
 HELM_NAMESPACE ?= %s
 ## Name of the Helm release
@@ -304,10 +321,11 @@ HELM_CHART_DIR ?= %s/chart
 HELM_EXTRA_ARGS ?=
 
 .PHONY: install-helm
-install-helm: ## Install the latest version of Helm.
+install-helm: ## Install Helm if it is not installed.
 	@command -v $(HELM) >/dev/null 2>&1 || { \
-		echo "Installing Helm..." && \
-		curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash; \
+		echo "Installing Helm $(HELM_VERSION)..." && \
+		curl -fsSL https://raw.githubusercontent.com/helm/helm/$(HELM_VERSION)/scripts/get-helm-4 | \
+			bash -s -- --version $(HELM_VERSION); \
 	}
 
 .PHONY: helm-deploy

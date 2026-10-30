@@ -44,6 +44,14 @@ const (
 	ControllerRuntimeVersion = "v0.25.2"
 	// ControllerToolsVersion is the kubernetes-sigs/controller-tools version to be used in the project
 	ControllerToolsVersion = "v0.23.0"
+	// KindVersion is the kind version that the dev container and the e2e workflow install
+	KindVersion = "v0.33.0"
+	// KubectlVersion is the kubectl version that the dev container installs
+	KubectlVersion = "v1.37.2"
+	// LogtoolsVersion is the sigs.k8s.io/logtools version of the logcheck linter plugin
+	LogtoolsVersion = "v0.11.0"
+	// CurlImage is the image that the e2e tests use to read the metrics endpoint
+	CurlImage = "curlimages/curl:8.23.0"
 
 	imageName = "controller:latest"
 )
@@ -199,18 +207,22 @@ func (s *initScaffolder) Scaffold() error {
 		&templates.Golangci{},
 		&templates.CustomGcl{
 			GolangciLintVersion: GolangciLintVersion,
+			LogtoolsVersion:     LogtoolsVersion,
 		},
-		&e2e.Test{},
+		&e2e.Test{CurlImage: CurlImage},
 		&e2e.WebhookTestUpdater{WireWebhook: false},
 		&e2e.SuiteTest{},
-		&github.E2eTestCi{},
+		&github.E2eTestCi{KindVersion: KindVersion},
 		&github.TestCi{},
 		&github.LintCi{
 			GolangciLintVersion: GolangciLintVersion,
 		},
 		&utils.Utils{},
 		&templates.DevContainer{},
-		&templates.DevContainerPostInstallScript{},
+		&templates.DevContainerPostInstallScript{
+			KindVersion:    KindVersion,
+			KubectlVersion: KubectlVersion,
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to execute init scaffold: %w", err)

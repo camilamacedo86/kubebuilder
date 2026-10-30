@@ -119,7 +119,7 @@ echo "------------------------------------"
 # Install kind
 if ! command -v kind &> /dev/null; then
   echo "Installing kind..."
-  curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/latest/kind-linux-${ARCH}"
+  curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/{{ .KindVersion }}/kind-linux-${ARCH}"
   chmod +x /usr/local/bin/kind
   echo "kind installed successfully"
 fi
@@ -153,8 +153,7 @@ fi
 # Install kubectl
 if ! command -v kubectl &> /dev/null; then
   echo "Installing kubectl..."
-  KUBECTL_VERSION=$(curl -Ls https://dl.k8s.io/release/stable.txt)
-  curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl"
+  curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/{{ .KubectlVersion }}/bin/linux/${ARCH}/kubectl"
   chmod +x /usr/local/bin/kubectl
   echo "kubectl installed successfully"
 fi
@@ -235,6 +234,11 @@ type DevContainer struct {
 // DevContainerPostInstallScript defines the scaffold that will be done with the post install script
 type DevContainerPostInstallScript struct {
 	machinery.TemplateMixin
+
+	// KindVersion is the kind version to install
+	KindVersion string
+	// KubectlVersion is the kubectl version to install
+	KubectlVersion string
 }
 
 // SetTemplateDefaults set defaults for this template

@@ -262,7 +262,10 @@ build: ## Build manager binary.
 			Expect(contentStr).To(ContainSubstring("## Additional arguments to pass to helm commands"))
 			Expect(contentStr).To(ContainSubstring("HELM_EXTRA_ARGS ?="))
 			Expect(contentStr).To(ContainSubstring(".PHONY: install-helm"))
-			Expect(contentStr).To(ContainSubstring("install-helm: ## Install the latest version of Helm."))
+			Expect(contentStr).To(ContainSubstring("install-helm: ## Install Helm if it is not installed."))
+			Expect(contentStr).To(ContainSubstring("HELM_VERSION ?= " + HelmVersion))
+			Expect(contentStr).To(ContainSubstring(
+				"https://raw.githubusercontent.com/helm/helm/$(HELM_VERSION)/scripts/get-helm-4"))
 			Expect(contentStr).To(ContainSubstring(".PHONY: helm-deploy"))
 			Expect(contentStr).To(ContainSubstring(
 				"helm-deploy: install-helm ## Deploy manager to the K8s cluster via Helm. Specify an image with IMG."))
@@ -280,7 +283,7 @@ build: ## Build manager binary.
 		})
 
 		It("should not duplicate Helm targets if already present", func() {
-			// Create a Makefile that already has Helm targets (exact match to template)
+			// Create a Makefile with the Helm targets an older release wrote
 			makefileContent := `IMG ?= controller:latest
 
 .PHONY: build
