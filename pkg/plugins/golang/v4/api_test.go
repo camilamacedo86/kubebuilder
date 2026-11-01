@@ -17,14 +17,18 @@ limitations under the License.
 package v4
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
 
 	"sigs.k8s.io/kubebuilder/v4/pkg/config"
 	cfgv3 "sigs.k8s.io/kubebuilder/v4/pkg/config/v3"
+	"sigs.k8s.io/kubebuilder/v4/pkg/machinery"
 	"sigs.k8s.io/kubebuilder/v4/pkg/model/resource"
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugin"
 	goPlugin "sigs.k8s.io/kubebuilder/v4/pkg/plugins/golang"
@@ -738,4 +742,74 @@ var _ = Describe("default controller name", func() {
 		Entry("a kind with digits", "Captain2"),
 		Entry("a kind at the 63 character limit", "C"+strings.Repeat("a", 62)),
 	)
+})
+
+var _ = Describe("create api PreScaffold", func() {
+	const userCode = "package controller\n\n// written by the user\n"
+
+	var fs machinery.Filesystem
+
+	BeforeEach(func() {
+		dir := GinkgoT().TempDir()
+		originalDir, err := os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+		DeferCleanup(func() { Expect(os.Chdir(originalDir)).To(Succeed()) })
+		Expect(os.Chdir(dir)).To(Succeed())
+		Expect(os.MkdirAll("cmd", 0o750)).To(Succeed())
+		Expect(os.WriteFile(DefaultMainPath, []byte("package main\n"), 0o600)).To(Succeed())
+		fs = machinery.Filesystem{FS: afero.NewOsFs()}
+	})
+
+	// subcommand returns a create api request for crew/v1 Captain with its API and controller.
+	subcommand := func(multiGroup, force bool) *createAPISubcommand {
+		cfg := cfgv3.New()
+		Expect(cfg.SetRepository("test")).To(Succeed())
+		if multiGroup {
+			Expect(cfg.SetMultiGroup()).To(Succeed())
+		}
+		return &createAPISubcommand{
+			config: cfg,
+			force:  force,
+			resource: &resource.Resource{
+				GVK:         resource.GVK{Group: crewGroup, Domain: testIO, Version: "v1", Kind: captainKind},
+				Plural:      "captains",
+				Controllers: &resource.Controllers{{Name: "captain"}},
+			},
+			options: &goPlugin.Options{DoAPI: true, DoController: true},
+		}
+	}
+
+	writeFile := func(path string) {
+		Expect(os.MkdirAll(filepath.Dir(path), 0o750)).To(Succeed())
+		Expect(os.WriteFile(path, []byte(userCode), 0o600)).To(Succeed())
+	}
+
+	DescribeTable("should refuse a file that create api would overwrite, before any plugin writes",
+		func(multiGroup bool, path string) {
+			writeFile(path)
+
+			err := subcommand(multiGroup, false).PreScaffold(fs)
+			Expect(err).To(MatchError(ContainSubstring(path)))
+			Expect(err).To(MatchError(ContainSubstring("--force")))
+			Expect(os.ReadFile(path)).To(Equal([]byte(userCode)))
+		},
+		Entry("for the controller", false, filepath.Join("internal", "controller", "captain_controller.go")),
+		Entry("for the API types", false, filepath.Join("api", "v1", "captain_types.go")),
+		Entry("for the controller in a multigroup project", true,
+			filepath.Join("internal", "controller", crewGroup, "captain_controller.go")),
+		Entry("for the API types in a multigroup project", true,
+			filepath.Join("api", crewGroup, "v1", "captain_types.go")),
+	)
+
+	It("should allow overwriting an existing file with --force", func() {
+		writeFile(filepath.Join("internal", "controller", "captain_controller.go"))
+
+		Expect(subcommand(false, true).PreScaffold(fs)).To(Succeed())
+	})
+
+	It("should accept a file of another controller", func() {
+		writeFile(filepath.Join("internal", "controller", "sailor_controller.go"))
+
+		Expect(subcommand(false, false).PreScaffold(fs)).To(Succeed())
+	})
 })

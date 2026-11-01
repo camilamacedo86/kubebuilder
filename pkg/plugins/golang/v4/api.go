@@ -23,6 +23,7 @@ import (
 	log "log/slog"
 	"os"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
 
 	"sigs.k8s.io/kubebuilder/v4/pkg/config"
@@ -351,10 +352,30 @@ func (p *createAPISubcommand) sharesControllerPackage(other resource.Resource) b
 	return !p.config.IsMultiGroup() || p.resource.Group == other.Group
 }
 
-func (p *createAPISubcommand) PreScaffold(machinery.Filesystem) error {
+func (p *createAPISubcommand) PreScaffold(fs machinery.Filesystem) error {
 	// check if main.go is present in the root directory
 	if _, err := os.Stat(DefaultMainPath); os.IsNotExist(err) {
 		return fmt.Errorf("%s file should present in the root directory", DefaultMainPath)
+	}
+
+	// Refuse before any plugin writes a file, so an existing file does not leave the project
+	// partly scaffolded.
+	if p.force {
+		return nil
+	}
+	paths, err := scaffolds.FilesWithoutOverwrite(p.config, *p.resource, p.options.DoAPI, p.options.DoController)
+	if err != nil {
+		return fmt.Errorf("failed to check the files to scaffold: %w", err)
+	}
+	for _, path := range paths {
+		exists, err := afero.Exists(fs.FS, path)
+		if err != nil {
+			return fmt.Errorf("failed to check if %q exists: %w", path, err)
+		}
+		if exists {
+			return fmt.Errorf("unable to scaffold %q: the file already exists. "+
+				"Move or rename it, or use '--force' to overwrite it", path)
+		}
 	}
 
 	return nil

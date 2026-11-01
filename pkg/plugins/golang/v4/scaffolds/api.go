@@ -180,6 +180,38 @@ func (s *apiScaffolder) controllerName() string {
 	return names[len(names)-1]
 }
 
+// FilesWithoutOverwrite returns the API types and controller files that create api writes for res
+// and refuses to overwrite without --force. It reads the paths from the templates that write them.
+func FilesWithoutOverwrite(cfg config.Config, res resource.Resource, doAPI, doController bool) ([]string, error) {
+	var templates []machinery.Template
+	if doAPI {
+		templates = append(templates, &api.Types{})
+	}
+	if doController {
+		controllerName := ""
+		if names := res.GetControllerNames(); len(names) > 0 {
+			controllerName = names[len(names)-1]
+		}
+		templates = append(templates, &controllers.Controller{ControllerName: controllerName})
+	}
+
+	paths := make([]string, 0, len(templates))
+	for _, template := range templates {
+		if t, ok := template.(machinery.HasMultiGroup); ok {
+			t.InjectMultiGroup(cfg.IsMultiGroup())
+		}
+		if t, ok := template.(machinery.HasResource); ok {
+			t.InjectResource(&res)
+		}
+		if err := template.SetTemplateDefaults(); err != nil {
+			return nil, fmt.Errorf("failed to resolve the path of a scaffolded file: %w", err)
+		}
+		paths = append(paths, template.GetPath())
+	}
+
+	return paths, nil
+}
+
 // apiPackageDir returns the directory of the resource group/version package.
 func (s *apiScaffolder) apiPackageDir() string {
 	if s.config.IsMultiGroup() && s.resource.Group != "" {
